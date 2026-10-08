@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reasoning &amp; Contractual English Trainer</title>
+  <meta name="description" content="Entrenamiento de razonamiento lógico e inglés contractual con ejercicios generados y validados automáticamente.">
+  <!-- Tailwind (Play CDN) is a progressive enhancement for utility classes; the app is fully styled by css/styles.css and works offline without it. -->
+  <script>window.tailwind = { config: { corePlugins: { preflight: false } } };</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a class="skip" href="#app">Saltar al contenido</a>
+  <header class="site-header">
+    <span class="logo" aria-hidden="true">◈</span>
+    <strong>Reasoning &amp; Contractual English Trainer</strong>
+  </header>
+  <main id="app" tabindex="-1"><p class="muted">Cargando…</p></main>
+  <noscript><p class="alert">Esta aplicación necesita JavaScript.</p></noscript>
+
+  <!-- ENGINE -->
+  <script src="js/engines/random.js"></script>
+  <script src="js/engines/difficulty.js"></script>
+  <script src="js/engines/intervals.js"></script>
+  <script src="js/engines/solver.js"></script>
+  <script src="js/engines/explanation.js"></script>
+  <script src="js/engines/validator.js"></script>
+  <script src="js/engines/generator.js"></script>
+  <!-- DATA -->
+  <script src="js/data/pools.js"></script>
+  <script src="js/data/vocabulary.js"></script>
+  <script src="js/data/grammar.js"></script>
+  <script src="js/data/templates.js"></script>
+  <!-- MODULES -->
+  <script src="js/modules/positional.js"></script>
+  <script src="js/modules/scheduling.js"></script>
+  <script src="js/modules/scheduling-kinds.js"></script>
+  <script src="js/modules/calendar.js"></script>
+  <script src="js/modules/english.js"></script>
+  <script src="js/data/fallbacks.js"></script>
+  <!-- STATE -->
+  <script src="js/statistics.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/state.js"></script>
+  <!-- UI -->
+  <script src="js/ui/dom.js"></script>
+  <script src="js/ui/visuals.js"></script>
+  <script src="js/ui/dashboard.js"></script>
+  <script src="js/ui/exercise.js"></script>
+  <script src="js/ui/result.js"></script>
+  <script src="js/ui/stats.js"></script>
+  <script src="js/ui/debug.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

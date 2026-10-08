@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Tests — Reasoning Trainer</title>
+<style>body{font:15px/1.5 system-ui;margin:1.5rem;max-width:60rem}.ok{color:#0f7a3d}.bad{color:#b42318;font-weight:700}li{margin:.3rem 0}pre{white-space:pre-wrap}</style></head>
+<body><h1>Automatic tests</h1><p>Add <code>?N=100</code> (exercises per module &amp; level) or <code>?QUICK=1</code>.</p><button id="go">Run tests</button><ul id="out"></ul><p id="sum"></p>
+<script src="../js/engines/random.js"></script><script src="../js/engines/difficulty.js"></script><script src="../js/engines/intervals.js"></script><script src="../js/engines/solver.js"></script>
+<script src="../js/engines/explanation.js"></script><script src="../js/engines/validator.js"></script><script src="../js/engines/generator.js"></script>
+<script src="../js/data/pools.js"></script><script src="../js/data/vocabulary.js"></script><script src="../js/data/grammar.js"></script><script src="../js/data/templates.js"></script>
+<script src="../js/modules/positional.js"></script><script src="../js/modules/scheduling.js"></script><script src="../js/modules/scheduling-kinds.js"></script><script src="../js/modules/calendar.js"></script><script src="../js/modules/english.js"></script>
+<script src="../js/data/fallbacks.js"></script><script src="../js/statistics.js"></script><script src="../js/storage.js"></script><script src="../js/timer.js"></script><script src="../js/state.js"></script>
+<script src="tests.js"></script>
+<script>
+document.getElementById('go').onclick = async () => {
+  const out = document.getElementById('out'); out.textContent = '';
+  const r = await RT.runTests();
+  for (const t of r.results) { const li = document.createElement('li'); li.className = t.ok ? 'ok' : 'bad'; li.textContent = (t.ok ? '✓ ' : '✕ ') + t.name + ' (' + t.ms + ' ms)' + (t.ok ? '' : ' — ' + t.error); out.appendChild(li); }
+  document.getElementById('sum').textContent = (r.results.length - r.failed) + '/' + r.results.length + ' tests passed (N=' + r.N + ')';
+  document.title = r.failed ? 'FAILED' : 'PASSED';
+};
+if (location.search.includes('auto')) document.getElementById('go').click();
+</script></body></html>
