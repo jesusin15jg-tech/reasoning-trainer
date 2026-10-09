@@ -15,8 +15,14 @@
   const X = RT.explanation;
 
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const L = (en, es) => RT.i18n.pick(en, es);
   const DAYS = S.WEEKDAYS;
+  const DAYS_ES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
   const ORD_WORD = { 1: 'first', 2: 'second', 3: 'third', 4: 'fourth', last: 'last' };
+  const ORD_ES = { 1: 'primer', 2: 'segundo', 3: 'tercer', 4: 'cuarto', last: 'último' };
+  const dayName = (i) => L(DAYS[i], DAYS_ES[i]);
+  /** "Mondays" / "los lunes" */
+  const dayPlural = (i) => L(DAYS[i] + 's', (i >= 5 ? DAYS_ES[i] + 's' : DAYS_ES[i]));
 
   function ordNum(n) {
     const v = n % 100;
@@ -24,24 +30,28 @@
     return `${n}${suf}`;
   }
   const joinEn = (arr) => (arr.length <= 1 ? arr.join('') : arr.slice(0, -1).join(', ') + ' and ' + arr[arr.length - 1]);
-  const joinOr = (arr) => (arr.length <= 1 ? arr.join('') : arr.slice(0, -1).join(', ') + ' or ' + arr[arr.length - 1]);
+  const joinOr = (arr) => (arr.length <= 1 ? arr.join('') : arr.slice(0, -1).join(', ') + L(' or ', ' o ') + arr[arr.length - 1]);
+  const joinEs = (arr) => (arr.length <= 1 ? arr.join('') : arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1]);
 
   /* ----------------------------- text ------------------------------------ */
 
   function ruleText(r) {
     switch (r.type) {
-      case 'holiday': return `The ${ordNum(r.day)} is a public holiday (nobody works).`;
-      case 'weekday': return `${r.person} does not work on ${joinOr(r.days.map((d) => DAYS[d] + 's'))}.`;
-      case 'date': return `${r.person} cannot work on the ${ordNum(r.day)}.`;
-      case 'range': return `${r.person} is on leave from the ${ordNum(r.from)} to the ${ordNum(r.to)} (both included).`;
-      case 'ordinal': return `${r.person} does not work on the ${joinEn(r.ordinals.map((o) => ORD_WORD[o]))} ${DAYS[r.weekday]}${r.ordinals.length > 1 ? 's' : ''} of the month.`;
-      case 'conditional': return `${r.person} does not work on ${joinOr(r.days.map((d) => DAYS[d] + 's'))} of any week in which ${r.other} works on the ${DAYS[r.weekday]} of that same week.`;
+      case 'holiday': return L(`The ${ordNum(r.day)} is a public holiday (nobody works).`, `El día ${r.day} es festivo (nadie trabaja).`);
+      case 'weekday': return L(`${r.person} does not work on ${joinOr(r.days.map(dayPlural))}.`, `${r.person} no trabaja los ${joinOr(r.days.map(dayPlural))}.`);
+      case 'date': return L(`${r.person} cannot work on the ${ordNum(r.day)}.`, `${r.person} no puede trabajar el día ${r.day}.`);
+      case 'range': return L(`${r.person} is on leave from the ${ordNum(r.from)} to the ${ordNum(r.to)} (both included).`, `${r.person} está de permiso del día ${r.from} al día ${r.to} (ambos incluidos).`);
+      case 'ordinal': return L(`${r.person} does not work on the ${joinEn(r.ordinals.map((o) => ORD_WORD[o]))} ${DAYS[r.weekday]}${r.ordinals.length > 1 ? 's' : ''} of the month.`,
+        `${r.person} no trabaja ${joinEs(r.ordinals.map((o) => 'el ' + ORD_ES[o]))} ${DAYS_ES[r.weekday]} del mes.`);
+      case 'conditional': return L(`${r.person} does not work on ${joinOr(r.days.map(dayPlural))} of any week in which ${r.other} works on the ${DAYS[r.weekday]} of that same week.`,
+        `${r.person} no trabaja los ${joinOr(r.days.map(dayPlural))} de ninguna semana en la que ${r.other} trabaje el ${DAYS_ES[r.weekday]} de esa misma semana.`);
       default: throw new Error('unknown rule type ' + r.type);
     }
   }
 
-  const questionText = (n) => `On which dates can all ${n} people work together? Select every valid date.`;
-  const introText = (base) => `A ${base.days}-day month whose 1st falls on a ${DAYS[base.startDow]}. Nobody works on Saturdays or Sundays. Weeks run Monday to Sunday; only dates inside this month are considered.`;
+  const questionText = (n) => L(`On which dates can all ${n} people work together? Select every valid date.`, `¿En qué fechas pueden trabajar juntas las ${n} personas? Selecciona todas las fechas válidas.`);
+  const introText = (base) => L(`A ${base.days}-day month whose 1st falls on a ${DAYS[base.startDow]}. Nobody works on Saturdays or Sundays. Weeks run Monday to Sunday; only dates inside this month are considered.`,
+    `Un mes de ${base.days} días cuyo día 1 cae en ${DAYS_ES[base.startDow]}. Nadie trabaja los sábados ni los domingos. Las semanas van de lunes a domingo; solo se consideran las fechas de este mes.`);
 
   /* ----------------------- constraints <-> spec --------------------------- */
 
@@ -116,17 +126,18 @@
     const cs = ex.constraints;
     const spec = specFromConstraints(base, cs);
     const sol = S.solveCalendar(spec);
-    const listDays = (a) => (a.length ? a.join(', ') : 'ninguno');
+    const listDays = (a) => (a.length ? a.join(', ') : L('none', 'ninguno'));
     const weekdayDates = [];
     for (let d = 1; d <= base.days; d++) if (S.dowOf(base.startDow, d) < 5) weekdayDates.push(d);
     const weekends = [];
     for (let d = 1; d <= base.days; d++) if (S.dowOf(base.startDow, d) >= 5) weekends.push(d);
 
-    const steps = [X.step('Calendario', `Mes de ${base.days} días que empieza en ${['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'][base.startDow]}. Fines de semana (no laborables): ${weekends.join(', ')}. Quedan ${weekdayDates.length} días laborables.`)];
+    const steps = [X.step(L('Calendar', 'Calendario'), L(`A ${base.days}-day month starting on ${DAYS[base.startDow]}. Weekends (non-working): ${weekends.join(', ')}. ${weekdayDates.length} working days remain.`,
+      `Mes de ${base.days} días que empieza en ${DAYS_ES[base.startDow]}. Fines de semana (no laborables): ${weekends.join(', ')}. Quedan ${weekdayDates.length} días laborables.`))];
 
     cs.forEach((c, i) => {
       let eff;
-      if (c.type === 'holiday') eff = `el día ${c.day} no trabaja nadie${S.dowOf(base.startDow, c.day) >= 5 ? ' (ya era fin de semana)' : ''}.`;
+      if (c.type === 'holiday') eff = L(`nobody works on day ${c.day}${S.dowOf(base.startDow, c.day) >= 5 ? ' (it was already a weekend)' : ''}.`, `el día ${c.day} no trabaja nadie${S.dowOf(base.startDow, c.day) >= 5 ? ' (ya era fin de semana)' : ''}.`);
       else {
         // raw effect of this rule alone (what it would block even if no other rule existed)
         const solo = {
@@ -135,15 +146,15 @@
           people: spec.people.map((p) => (p.name === c.person ? { name: p.name, rules: [c] } : p)),
         };
         const blocked = weekdayDates.filter((d) => !S.available(solo, solo.people.find((p) => p.name === c.person), d));
-        eff = `${c.person} no puede trabajar ${blocked.length === 1 ? 'el día' : 'los días'} ${listDays(blocked)}.`;
+        eff = L(`${c.person} cannot work on ${blocked.length === 1 ? 'day' : 'days'} ${listDays(blocked)}.`, `${c.person} no puede trabajar ${blocked.length === 1 ? 'el día' : 'los días'} ${listDays(blocked)}.`);
       }
-      steps.push(X.step(`Regla ${i + 1}`, `«${ex.data.rules[i]}» → ${eff}`));
+      steps.push(X.step(L(`Rule ${i + 1}`, `Regla ${i + 1}`), `${RT.i18n.q(ex.data.rules[i])} → ${eff}`));
     });
 
     const blockers = S.blockersByDay(spec);
     const free = weekdayDates.filter((d) => !blockers[d].length);
-    steps.push(X.step('Intersección', `Un día vale solo si nadie lo tiene bloqueado (fines de semana, festivos y reglas de cada persona). Días laborables libres para todos: ${listDays(free)}.`));
-    steps.push(X.step('Conclusión', `Respuesta: ${sol.join(', ')}. Cualquier selección distinta (incluso parcialmente correcta) es incorrecta.`));
+    steps.push(X.step(L('Intersection', 'Intersección'), L(`A day is valid only if nobody has it blocked (weekends, holidays and each person's rules). Working days free for everyone: ${listDays(free)}.`, `Un día vale solo si nadie lo tiene bloqueado (fines de semana, festivos y reglas de cada persona). Días laborables libres para todos: ${listDays(free)}.`)));
+    steps.push(X.step(L('Conclusion', 'Conclusión'), L(`Answer: ${sol.join(', ')}. Any different selection (even a partly correct one) is wrong.`, `Respuesta: ${sol.join(', ')}. Cualquier selección distinta (incluso parcialmente correcta) es incorrecta.`)));
     return {
       steps,
       visual: { type: 'calendar', days: base.days, startDow: base.startDow, holidays: spec.holidays, solution: sol, blockers },

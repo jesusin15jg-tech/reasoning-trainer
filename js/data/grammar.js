@@ -109,6 +109,9 @@
   };
   const FAMILY_OPTIONS = { be: ['is', 'are', 'was', 'were'], have: ['has', 'have', 'had', 'having'] };
   const TENSE_ES = { present: 'presente', past: 'pasado', perfect: 'presente perfecto', pastperfect: 'pasado perfecto', nonfinite: 'forma no personal' };
+  const TENSE_EN = { present: 'present simple', past: 'past simple', perfect: 'present perfect', pastperfect: 'past perfect', nonfinite: 'non-finite form' };
+  const tenseName = (t) => (RT.i18n.lang === 'es' ? TENSE_ES : TENSE_EN)[t];
+  const L = (en, es) => RT.i18n.pick(en, es);
 
   /* ------------------------------ engine ----------------------------------- */
 
@@ -131,55 +134,56 @@
       case 'there': {
         const num = rng.pick(['sg', 'pl']);
         const np = rng.pick(THERE_NP[num]);
-        return { np, number: num, domain: 'there', ruleEs: `En «there is / there are» el verbo concuerda con el sustantivo que sigue: «${np}» es ${num === 'sg' ? 'singular o incontable' : 'plural'}.` };
+        return { np, number: num, domain: 'there', ruleEs: `En «there is / there are» el verbo concuerda con el sustantivo que sigue: «${np}» es ${num === 'sg' ? 'singular o incontable' : 'plural'}.`, ruleEn: `In “there is / there are” the verb agrees with the noun that follows: “${np}” is ${num === 'sg' ? 'singular or uncountable' : 'plural'}.` };
       }
       case 'each-of': {
         const n = nounOf(rng, ['doc', 'people', 'quant'], ['pl']);
-        return { np: `Each of the ${n.text}`, number: 'sg', domain: n.domain, ruleEs: 'El sujeto es «each» (cada uno), no el plural que sigue a «of»: verbo en singular.' };
+        return { np: `Each of the ${n.text}`, number: 'sg', domain: n.domain, ruleEs: 'El sujeto es «each» (cada uno), no el plural que sigue a «of»: verbo en singular.', ruleEn: 'The subject is “each” (every single one), not the plural after “of”: singular verb.' };
       }
       case 'every': {
         const n = nounOf(rng, ['doc', 'people'], ['sg']);
-        return { np: `Every ${n.text}`, number: 'sg', domain: n.domain, ruleEs: '«Every» + sustantivo singular → verbo en singular.' };
+        return { np: `Every ${n.text}`, number: 'sg', domain: n.domain, ruleEs: '«Every» + sustantivo singular → verbo en singular.', ruleEn: '“Every” + singular noun → singular verb.' };
       }
       case 'plain': {
         const n = nounOf(rng, ['doc', 'people', 'mat'], ['pl', 'sg', 'unc']);
-        return { np: `The ${n.text}`, number: n.number, domain: n.domain, ruleEs: `El núcleo del sujeto es «${n.text}», que es ${n.number === 'sg' ? 'singular o incontable' : 'plural'}.` };
+        return { np: `The ${n.text}`, number: n.number, domain: n.domain, ruleEs: `El núcleo del sujeto es «${n.text}», que es ${n.number === 'sg' ? 'singular o incontable' : 'plural'}.`, ruleEn: `The head of the subject is “${n.text}”, which is ${n.number === 'sg' ? 'singular or uncountable' : 'plural'}.` };
       }
       case 'quant-of': {
         const q = rng.pick(['Most of', 'Some of', 'All of', 'Half of', 'A lot of', 'Plenty of']);
         const n = nounOf(rng, ['doc', 'mat', 'info', 'people'], ['pl', 'unc']);
-        return { np: `${q} the ${n.text}`, number: n.number, domain: n.domain, ruleEs: `Con «${q.toLowerCase()}» el verbo concuerda con el sustantivo que sigue a «of»: «${n.text}» es ${n.number === 'pl' ? 'plural' : 'incontable (singular)'}.` };
+        return { np: `${q} the ${n.text}`, number: n.number, domain: n.domain, ruleEs: `Con «${q.toLowerCase()}» el verbo concuerda con el sustantivo que sigue a «of»: «${n.text}» es ${n.number === 'pl' ? 'plural' : 'incontable (singular)'}.`, ruleEn: `With “${q.toLowerCase()}” the verb agrees with the noun after “of”: “${n.text}” is ${n.number === 'pl' ? 'plural' : 'uncountable (singular)'}.` };
       }
       case 'a-number-of': {
         const n = nounOf(rng, ['doc', 'people', 'quant'], ['pl']);
-        return { np: `A number of ${n.text}`, number: 'pl', domain: n.domain, ruleEs: '«A number of» + plural equivale a «varios»: el verbo va en plural.' };
+        return { np: `A number of ${n.text}`, number: 'pl', domain: n.domain, ruleEs: '«A number of» + plural equivale a «varios»: el verbo va en plural.', ruleEn: '“A number of” + plural means “several”: plural verb.' };
       }
       case 'the-number-of': {
         const n = nounOf(rng, ['quant'], ['pl']);
-        return { np: `The number of ${n.text}`, number: 'sg', domain: 'quant', ruleEs: '«The number of» + plural = «la cifra de»: el sujeto es «number» (singular) → verbo en singular.' };
+        return { np: `The number of ${n.text}`, number: 'sg', domain: 'quant', ruleEs: '«The number of» + plural = «la cifra de»: el sujeto es «number» (singular) → verbo en singular.', ruleEn: '“The number of” + plural = “the figure for”: the subject is “number” (singular) → singular verb.' };
       }
       case 'amount-of': {
         const q = rng.pick(['A large amount of', 'A great deal of', 'The amount of']);
         const n = nounOf(rng, ['mat', 'info'], ['unc']);
-        return { np: `${q} ${n.text}`, number: 'sg', domain: n.domain, ruleEs: `«${q}» + sustantivo incontable («${n.text}») → verbo en singular.` };
+        return { np: `${q} ${n.text}`, number: 'sg', domain: n.domain, ruleEs: `«${q}» + sustantivo incontable («${n.text}») → verbo en singular.`, ruleEn: `“${q}” + uncountable noun (“${n.text}”) → singular verb.` };
       }
       case 'one-of': {
         const n = nounOf(rng, ['doc', 'people', 'quant', 'mat'], ['pl']);
-        return { np: `One of the ${n.text}`, number: 'sg', domain: n.domain, ruleEs: 'El sujeto es «one» (uno de ellos), no el plural que sigue a «of»: verbo en singular.' };
+        return { np: `One of the ${n.text}`, number: 'sg', domain: n.domain, ruleEs: 'El sujeto es «one» (uno de ellos), no el plural que sigue a «of»: verbo en singular.', ruleEn: 'The subject is “one” (a single one of them), not the plural after “of”: singular verb.' };
       }
       case 'majority': {
         const n = nounOf(rng, ['doc', 'people', 'quant'], ['pl']);
-        return { np: `The majority of the ${n.text}`, number: 'pl', domain: n.domain, ruleEs: `«The majority of» + plural: el verbo concuerda con «${n.text}» (plural).` };
+        return { np: `The majority of the ${n.text}`, number: 'pl', domain: n.domain, ruleEs: `«The majority of» + plural: el verbo concuerda con «${n.text}» (plural).`, ruleEn: `“The majority of” + plural: the verb agrees with “${n.text}” (plural).` };
       }
       case 'rest-of': {
         const q = rng.pick(['The rest of the', 'The remainder of the']);
         const n = nounOf(rng, ['doc', 'mat', 'info'], ['pl', 'unc']);
-        return { np: `${q} ${n.text}`, number: n.number, domain: n.domain, ruleEs: `Con «${q.toLowerCase().replace('the ', '')}» el verbo concuerda con el sustantivo que sigue: «${n.text}» es ${n.number === 'pl' ? 'plural' : 'incontable (singular)'}.` };
+        return { np: `${q} ${n.text}`, number: n.number, domain: n.domain, ruleEs: `Con «${q.toLowerCase().replace('the ', '')}» el verbo concuerda con el sustantivo que sigue: «${n.text}» es ${n.number === 'pl' ? 'plural' : 'incontable (singular)'}.`, ruleEn: `With “${q.toLowerCase().replace('the ', '')}” the verb agrees with the noun that follows: “${n.text}” is ${n.number === 'pl' ? 'plural' : 'uncountable (singular)'}.` };
       }
       case 'intervening': {
         const num = rng.pick(['sg', 'pl']);
         const np = rng.pick(INTERVENING[num]);
-        return { np, number: num, domain: 'doc', ruleEs: num === 'sg' ? 'El núcleo del sujeto es singular; el sintagma con «of» que lo acompaña no cambia la concordancia.' : 'El núcleo del sujeto es plural; el complemento singular tras la preposición no cambia la concordancia.' };
+        return { np, number: num, domain: 'doc', ruleEs: num === 'sg' ? 'El núcleo del sujeto es singular; el sintagma con «of» que lo acompaña no cambia la concordancia.' : 'El núcleo del sujeto es plural; el complemento singular tras la preposición no cambia la concordancia.',
+          ruleEn: num === 'sg' ? 'The head of the subject is singular; the “of” phrase attached to it does not change the agreement.' : 'The head of the subject is plural; the singular complement after the preposition does not change the agreement.' };
       }
       default: throw new Error('unknown SVA pattern ' + pattern);
     }
@@ -200,18 +204,23 @@
     return t.replace('{S}', cap(spec.np)).replace('{s}', lc(spec.np));
   }
 
-  /** Spanish note for one option (why right / why wrong), derived from the engine */
+  /** Rule text for the current language (the spec carries both versions; building them consumes no randomness). */
+  const ruleFor = (spec) => L(spec.ruleEn, spec.ruleEs);
+
+  /** Note for one option (why right / why wrong), derived from the engine, in the current language. */
   function noteFor(spec, form) {
     const info = FORMS[form];
-    const nm = spec.number === 'sg' ? 'singular' : 'plural';
-    if (validForm(spec, form)) return `Correcta: el sujeto es ${nm} y «${spec.cue}» pide ${TENSE_ES[spec.tense]} → «${form}».`;
-    if (info.tense === 'nonfinite') return '«having» no es una forma personal: no puede ser el verbo principal de la oración.';
-    if (info.tense === 'pastperfect') return `«had» es pasado perfecto; «${spec.cue}» pide presente perfecto (has/have).`;
+    const nm = L(spec.number === 'sg' ? 'singular' : 'plural', spec.number === 'sg' ? 'singular' : 'plural');
+    const infoNm = L(info.num === 'sg' ? 'singular' : 'plural', info.num === 'sg' ? 'singular' : 'plural');
+    const T = tenseName;
+    if (validForm(spec, form)) return L(`Correct: the subject is ${nm} and “${spec.cue}” calls for the ${T(spec.tense)} → “${form}”.`, `Correcta: el sujeto es ${nm} y «${spec.cue}» pide ${T(spec.tense)} → «${form}».`);
+    if (info.tense === 'nonfinite') return L('“having” is not a finite form: it cannot be the main verb of the sentence.', '«having» no es una forma personal: no puede ser el verbo principal de la oración.');
+    if (info.tense === 'pastperfect') return L(`“had” is the past perfect; “${spec.cue}” calls for the present perfect (has/have).`, `«had» es pasado perfecto; «${spec.cue}» pide presente perfecto (has/have).`);
     const numOk = info.num === spec.number;
     const tenseOk = info.tense === spec.tense;
-    if (!numOk && tenseOk) return `«${form}» es ${info.num === 'sg' ? 'singular' : 'plural'}, pero el sujeto es ${nm}.`;
-    if (numOk && !tenseOk) return `«${form}» concuerda en número, pero está en ${TENSE_ES[info.tense]} y «${spec.cue}» exige ${TENSE_ES[spec.tense]}.`;
-    return `«${form}» falla en número (el sujeto es ${nm}) y en tiempo («${spec.cue}» exige ${TENSE_ES[spec.tense]}).`;
+    if (!numOk && tenseOk) return L(`“${form}” is ${infoNm}, but the subject is ${nm}.`, `«${form}» es ${infoNm}, pero el sujeto es ${nm}.`);
+    if (numOk && !tenseOk) return L(`“${form}” agrees in number, but it is ${T(info.tense)} and “${spec.cue}” requires the ${T(spec.tense)}.`, `«${form}» concuerda en número, pero está en ${T(info.tense)} y «${spec.cue}» exige ${T(spec.tense)}.`);
+    return L(`“${form}” fails in number (the subject is ${nm}) and in tense (“${spec.cue}” requires the ${T(spec.tense)}).`, `«${form}» falla en número (el sujeto es ${nm}) y en tiempo («${spec.cue}» exige ${T(spec.tense)}).`);
   }
 
   function makeSva(rng, level) {
@@ -222,7 +231,7 @@
     const tense = family === 'have' ? 'perfect' : rng.pick(['present', 'past']);
     const frameKey = pattern === 'there' ? 'there' : subj.domain;
     const frame = rng.pick(FRAMES[frameKey][tense]);
-    const spec = { pattern, np: subj.np, number: subj.number, family, tense, frame, cue: frame.cue, ruleEs: subj.ruleEs };
+    const spec = { pattern, np: subj.np, number: subj.number, family, tense, frame, cue: frame.cue, ruleEs: subj.ruleEs, ruleEn: subj.ruleEn };
     return {
       spec,
       stem: renderStem(spec),
@@ -231,7 +240,7 @@
     };
   }
 
-  RT.grammar = { makeSva, validForm, correctForm, noteFor, renderStem, FORMS, FAMILY_OPTIONS, PATTERNS, TENSE_ES };
+  RT.grammar = { makeSva, validForm, correctForm, noteFor, ruleFor, renderStem, FORMS, FAMILY_OPTIONS, PATTERNS, TENSE_ES };
 
   /* ------------------------------ prepositions ----------------------------- */
 

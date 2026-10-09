@@ -16,27 +16,38 @@
   const D = RT.difficulty;
   const X = RT.explanation;
 
+  const L = (en, es) => RT.i18n.pick(en, es);
   const NUM = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+  const NUM_ES = ['cero', 'una', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete'];
+  const num = (k) => L(NUM[k], NUM_ES[k]);
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const range = (n) => Array.from({ length: n }, (_, i) => i + 1);
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const PERSONAL = ['people', 'contractors'];
+  /** In Spanish, names of things (not people/companies) are quoted so that bare nouns read naturally in a sentence. */
+  const decor = (N, cat) => (RT.i18n.lang === 'es' && !PERSONAL.includes(cat) ? N.map((x) => '«' + x + '»') : N);
 
   /* ---------------------------- text rendering ---------------------------- */
 
   function clause(c, N) {
     switch (c.type) {
-      case 'abs': return `${N[c.a]} is in position ${c.pos}`;
-      case 'notAbs': return `${N[c.a]} is not in position ${c.pos}`;
-      case 'oneOf': return `${N[c.a]} is in position ${c.positions[0]} or ${c.positions[1]}`;
-      case 'gap': return `exactly ${NUM[c.k]} ${c.k === 1 ? 'position lies' : 'positions lie'} between ${N[c.a]} and ${N[c.b]}`;
+      case 'abs': return L(`${N[c.a]} is in position ${c.pos}`, `${N[c.a]} está en la posición ${c.pos}`);
+      case 'notAbs': return L(`${N[c.a]} is not in position ${c.pos}`, `${N[c.a]} no está en la posición ${c.pos}`);
+      case 'oneOf': return L(`${N[c.a]} is in position ${c.positions[0]} or ${c.positions[1]}`, `${N[c.a]} está en la posición ${c.positions[0]} o ${c.positions[1]}`);
+      case 'gap': return L(`exactly ${NUM[c.k]} ${c.k === 1 ? 'position lies' : 'positions lie'} between ${N[c.a]} and ${N[c.b]}`,
+        `exactamente ${NUM_ES[c.k]} ${c.k === 1 ? 'posición separa' : 'posiciones separan'} a ${N[c.a]} y ${N[c.b]}`);
       case 'offset':
-        if (c.d === 1) return c.flip ? `${N[c.b]} is immediately after ${N[c.a]}` : `${N[c.a]} is immediately before ${N[c.b]}`;
-        return c.flip ? `${N[c.b]} is exactly ${NUM[c.d]} positions after ${N[c.a]}` : `${N[c.a]} is exactly ${NUM[c.d]} positions before ${N[c.b]}`;
-      case 'before': return c.flip ? `${N[c.b]} comes after ${N[c.a]}` : `${N[c.a]} comes before ${N[c.b]}`;
-      case 'adj': return `${N[c.a]} and ${N[c.b]} are next to each other`;
-      case 'notAdj': return `${N[c.a]} and ${N[c.b]} are not next to each other`;
-      case 'block': return `${c.items.map((i) => N[i]).slice(0, 2).join(', ')} and ${N[c.items[2]]} occupy three consecutive positions (in any order)`;
-      case 'cond': return `if ${clause(c.if, N)}, then ${clause(c.then, N)}`;
+        if (c.d === 1) return c.flip ? L(`${N[c.b]} is immediately after ${N[c.a]}`, `${N[c.b]} está justo después de ${N[c.a]}`) : L(`${N[c.a]} is immediately before ${N[c.b]}`, `${N[c.a]} está justo antes de ${N[c.b]}`);
+        return c.flip ? L(`${N[c.b]} is exactly ${NUM[c.d]} positions after ${N[c.a]}`, `${N[c.b]} está exactamente ${NUM_ES[c.d]} posiciones después de ${N[c.a]}`)
+          : L(`${N[c.a]} is exactly ${NUM[c.d]} positions before ${N[c.b]}`, `${N[c.a]} está exactamente ${NUM_ES[c.d]} posiciones antes de ${N[c.b]}`);
+      case 'before': return c.flip ? L(`${N[c.b]} comes after ${N[c.a]}`, `${N[c.b]} va después de ${N[c.a]}`) : L(`${N[c.a]} comes before ${N[c.b]}`, `${N[c.a]} va antes que ${N[c.b]}`);
+      case 'adj': return L(`${N[c.a]} and ${N[c.b]} are next to each other`, `${N[c.a]} y ${N[c.b]} están uno al lado del otro`);
+      case 'notAdj': return L(`${N[c.a]} and ${N[c.b]} are not next to each other`, `${N[c.a]} y ${N[c.b]} no están uno al lado del otro`);
+      case 'block': {
+        const first = c.items.map((i) => N[i]).slice(0, 2).join(', ');
+        return L(`${first} and ${N[c.items[2]]} occupy three consecutive positions (in any order)`, `${first} y ${N[c.items[2]]} ocupan tres posiciones consecutivas (en cualquier orden)`);
+      }
+      case 'cond': return L(`if ${clause(c.if, N)}, then ${clause(c.then, N)}`, `si ${clause(c.if, N)}, entonces ${clause(c.then, N)}`);
       default: throw new Error('clause: unknown type ' + c.type);
     }
   }
@@ -51,12 +62,12 @@
 
   function buildQuestion(kind, query, N, n) {
     switch (kind) {
-      case 'position': return `What is the position of ${N[query.item]}?`;
-      case 'who': return `Who is in position ${query.pos}?`;
-      case 'sequence': return `Which of the following orders (positions 1 to ${n}, left to right) satisfies ALL the rules?`;
-      case 'must': return 'Which of the following MUST be true?';
-      case 'cannot': return 'Which of the following CANNOT be true?';
-      case 'could': return 'Which of the following COULD be true?';
+      case 'position': return L(`What is the position of ${N[query.item]}?`, `¿Cuál es la posición de ${N[query.item]}?`);
+      case 'who': return L(`Who is in position ${query.pos}?`, `¿Quién está en la posición ${query.pos}?`);
+      case 'sequence': return L(`Which of the following orders (positions 1 to ${n}, left to right) satisfies ALL the rules?`, `¿Cuál de los siguientes órdenes (posiciones 1 a ${n}, de izquierda a derecha) cumple TODAS las reglas?`);
+      case 'must': return L('Which of the following MUST be true?', '¿Cuál de las siguientes afirmaciones DEBE ser cierta?');
+      case 'cannot': return L('Which of the following CANNOT be true?', '¿Cuál de las siguientes afirmaciones NO PUEDE ser cierta?');
+      case 'could': return L('Which of the following COULD be true?', '¿Cuál de las siguientes afirmaciones PUEDE ser cierta?');
       default: throw new Error('unknown kind ' + kind);
     }
   }
@@ -220,6 +231,7 @@
     const catKey = rng.pick(Object.keys(RT.pools.positional));
     const cat = RT.pools.positional[catKey];
     const N = rng.sample(cat.names, n);
+    const DN = decor(N, catKey);
     const perms = S.permutations(n);
     const hidden = rng.pick(perms);
     const [minC, maxC] = D.level(level).constraints;
@@ -263,7 +275,7 @@
       const ans = sols[0][query.item];
       const others = rng.sample(range(n).filter((x) => x !== ans), 4);
       const posList = [ans, ...others].sort((x, y) => x - y);
-      const options = withIds(posList.map((pos) => ({ text: `Position ${pos}`, payload: { pos } })));
+      const options = withIds(posList.map((pos) => ({ text: L(`Position ${pos}`, `Posición ${pos}`), payload: { pos } })));
       built = { options, correct: options[posList.indexOf(ans)].id };
     } else if (kind === 'who') {
       query.pos = rng.int(1, n);
@@ -276,18 +288,19 @@
     } else if (kind === 'sequence') {
       built = sequenceOptions(rng, n, sols, chosen, N);
     } else {
-      built = statementOptions(rng, n, sols, kind, chosen, N);
+      built = statementOptions(rng, n, sols, kind, chosen, DN);
     }
     if (!built) return null;
 
     const ex = {
       kind,
-      question: buildQuestion(kind, query, N, n),
+      question: buildQuestion(kind, query, DN, n),
       data: {
-        intro: `${cap(NUM[n])} ${cat.noun} must be arranged in positions 1 to ${n}, one per position (position 1 is first).`,
+        intro: L(`${cap(NUM[n])} ${cat.noun} must be arranged in positions 1 to ${n}, one per position (position 1 is first).`,
+          `Hay ${NUM_ES[n]} ${cat.noun} que deben colocarse en las posiciones 1 a ${n}, una por posición (la posición 1 es la primera).`),
         category: catKey,
         names: N,
-        rules: chosen.map((c) => sentence(c, N)),
+        rules: chosen.map((c) => sentence(c, DN)),
         query,
       },
       constraints: chosen,
@@ -318,6 +331,7 @@
 
   function buildExplanation(ex) {
     const N = ex.data.names;
+    const DN = decor(N, ex.data.category);
     const n = N.length;
     const cs = ex.constraints;
     const sols = S.solveOrdering(n, cs);
@@ -325,9 +339,11 @@
     const unique = ex.kind === 'position' || ex.kind === 'who';
     const q = ex.data.query;
     const steps = [];
+    const plural = (k, en1, enN, es1, esN) => (k === 1 ? L(en1, es1) : L(enN, esN));
 
     cs.forEach((c, i) => {
-      steps.push(X.step(`Regla ${i + 1}`, `«${ex.data.rules[i]}» → de ${tr[i]} ${X.plural(tr[i], 'configuración posible', 'configuraciones posibles')} quedan ${tr[i + 1]}.`));
+      steps.push(X.step(L(`Rule ${i + 1}`, `Regla ${i + 1}`), L(`“${ex.data.rules[i]}” → of ${tr[i]} ${plural(tr[i], 'possible arrangement', 'possible arrangements', '', '')}, ${tr[i + 1]} remain.`,
+        `“${ex.data.rules[i]}” → de ${tr[i]} ${plural(tr[i], '', '', 'configuración posible', 'configuraciones posibles')} quedan ${tr[i + 1]}.`)));
     });
 
     const notes = {};
@@ -336,41 +352,54 @@
       const p = sols[0];
       const order = S.toOrder(p).map((i) => N[i]);
       const answerText = ex.kind === 'position'
-        ? `${N[q.item]} ocupa la posición ${p[q.item]}`
-        : `en la posición ${q.pos} está ${N[S.toOrder(p)[q.pos - 1]]}`;
-      steps.push(X.step('Restricción derivada', `Aplicadas todas las reglas solo sobrevive 1 configuración: ${order.join(' – ')}.`));
-      steps.push(X.step('Conclusión', `Por tanto ${answerText}.`));
+        ? L(`${DN[q.item]} is in position ${p[q.item]}`, `${DN[q.item]} ocupa la posición ${p[q.item]}`)
+        : L(`the one in position ${q.pos} is ${DN[S.toOrder(p)[q.pos - 1]]}`, `en la posición ${q.pos} está ${DN[S.toOrder(p)[q.pos - 1]]}`);
+      steps.push(X.step(L('Derived restriction', 'Restricción derivada'), L(`With all the rules applied only 1 arrangement survives: ${order.join(' – ')}.`, `Aplicadas todas las reglas solo sobrevive 1 configuración: ${order.join(' – ')}.`)));
+      steps.push(X.step(L('Conclusion', 'Conclusión'), L(`Therefore ${answerText}.`, `Por tanto ${answerText}.`)));
       for (const o of ex.options) {
         const ok = optionValid(ex, o, sols);
-        if (ex.kind === 'position') notes[o.id] = ok ? `Correcta: en la única configuración válida ${N[q.item]} está en la posición ${o.payload.pos}.` : `Incorrecta: ${N[q.item]} está en la posición ${p[q.item]}, no en la ${o.payload.pos}.`;
-        else notes[o.id] = ok ? `Correcta: ${N[o.payload.item]} ocupa la posición ${q.pos}.` : `Incorrecta: ${N[o.payload.item]} ocupa la posición ${p[o.payload.item]}, no la ${q.pos}.`;
+        if (ex.kind === 'position') {
+          notes[o.id] = ok ? L(`Correct: in the only valid arrangement ${DN[q.item]} is in position ${o.payload.pos}.`, `Correcta: en la única configuración válida ${DN[q.item]} está en la posición ${o.payload.pos}.`)
+            : L(`Wrong: ${DN[q.item]} is in position ${p[q.item]}, not in ${o.payload.pos}.`, `Incorrecta: ${DN[q.item]} está en la posición ${p[q.item]}, no en la ${o.payload.pos}.`);
+        } else {
+          notes[o.id] = ok ? L(`Correct: ${DN[o.payload.item]} is in position ${q.pos}.`, `Correcta: ${DN[o.payload.item]} ocupa la posición ${q.pos}.`)
+            : L(`Wrong: ${DN[o.payload.item]} is in position ${p[o.payload.item]}, not ${q.pos}.`, `Incorrecta: ${DN[o.payload.item]} ocupa la posición ${p[o.payload.item]}, no la ${q.pos}.`);
+        }
       }
-      visual = { type: 'order', rows: [{ label: 'Solución', order }] };
+      visual = { type: 'order', rows: [{ label: L('Solution', 'Solución'), order }] };
     } else {
-      steps.push(X.step('Restricción derivada', `Tras las ${cs.length} reglas quedan ${sols.length} configuraciones válidas. Cada opción se evalúa contra todas ellas.`));
-      const sample = sols.slice(0, 3).map((p, i) => ({ label: `Válida ${i + 1}`, order: S.toOrder(p).map((k) => N[k]) }));
+      steps.push(X.step(L('Derived restriction', 'Restricción derivada'), L(`After the ${cs.length} rules, ${sols.length} valid arrangements remain. Each option is checked against all of them.`, `Tras las ${cs.length} reglas quedan ${sols.length} configuraciones válidas. Cada opción se evalúa contra todas ellas.`)));
+      const sample = sols.slice(0, 3).map((p, i) => ({ label: L(`Valid ${i + 1}`, `Válida ${i + 1}`), order: S.toOrder(p).map((k) => N[k]) }));
       if (ex.kind === 'sequence') {
         for (const o of ex.options) {
           const p = orderToPos(o.payload.order);
           const broken = cs.map((c, i) => (S.evalConstraint(c, p) ? null : i + 1)).filter(Boolean);
-          notes[o.id] = broken.length ? `Descartada: incumple la${broken.length > 1 ? 's' : ''} regla${broken.length > 1 ? 's' : ''} ${broken.join(', ')}.` : 'Correcta: cumple todas las reglas.';
+          notes[o.id] = broken.length ? L(`Ruled out: it breaks rule${broken.length > 1 ? 's' : ''} ${broken.join(', ')}.`, `Descartada: incumple la${broken.length > 1 ? 's' : ''} regla${broken.length > 1 ? 's' : ''} ${broken.join(', ')}.`)
+            : L('Correct: it satisfies every rule.', 'Correcta: cumple todas las reglas.');
         }
         const right = ex.options.find((o) => o.id === ex.correctAnswer);
-        steps.push(X.step('Eliminación de opciones', 'Se comprueban las reglas una a una sobre cada secuencia; solo una las cumple todas.'));
-        steps.push(X.step('Conclusión', `La secuencia válida es la ${ex.correctAnswer}: ${right.text}.`));
-        visual = { type: 'order', rows: [{ label: 'Correcta', order: right.payload.order.map((i) => N[i]) }] };
+        steps.push(X.step(L('Eliminating options', 'Eliminación de opciones'), L('The rules are checked one by one on each order; only one order satisfies all of them.', 'Se comprueban las reglas una a una sobre cada secuencia; solo una las cumple todas.')));
+        steps.push(X.step(L('Conclusion', 'Conclusión'), L(`The valid order is ${ex.correctAnswer}: ${right.text}.`, `La secuencia válida es la ${ex.correctAnswer}: ${right.text}.`)));
+        visual = { type: 'order', rows: [{ label: L('Correct', 'Correcta'), order: right.payload.order.map((i) => N[i]) }] };
       } else {
         for (const o of ex.options) {
           const holds = sols.filter((p) => S.evalConstraint(o.payload.stmt, p));
           const fails = sols.filter((p) => !S.evalConstraint(o.payload.stmt, p));
-          if (ex.kind === 'must') notes[o.id] = fails.length === 0 ? `Correcta: es cierta en las ${sols.length} configuraciones válidas.` : `No es obligatoria: es falsa, por ejemplo, en ${orderStr(fails[0], N)}.`;
-          else if (ex.kind === 'cannot') notes[o.id] = holds.length === 0 ? `Correcta: es falsa en las ${sols.length} configuraciones válidas.` : `Puede ser cierta, por ejemplo, en ${orderStr(holds[0], N)}.`;
-          else notes[o.id] = holds.length ? `Correcta: es cierta en ${holds.length} de ${sols.length} configuraciones, por ejemplo ${orderStr(holds[0], N)}.` : `Imposible: es falsa en las ${sols.length} configuraciones válidas.`;
+          if (ex.kind === 'must') notes[o.id] = fails.length === 0 ? L(`Correct: it is true in all ${sols.length} valid arrangements.`, `Correcta: es cierta en las ${sols.length} configuraciones válidas.`)
+            : L(`Not necessary: it is false, for example, in ${orderStr(fails[0], N)}.`, `No es obligatoria: es falsa, por ejemplo, en ${orderStr(fails[0], N)}.`);
+          else if (ex.kind === 'cannot') notes[o.id] = holds.length === 0 ? L(`Correct: it is false in all ${sols.length} valid arrangements.`, `Correcta: es falsa en las ${sols.length} configuraciones válidas.`)
+            : L(`It can be true, for example, in ${orderStr(holds[0], N)}.`, `Puede ser cierta, por ejemplo, en ${orderStr(holds[0], N)}.`);
+          else notes[o.id] = holds.length ? L(`Correct: it is true in ${holds.length} of ${sols.length} arrangements, for example ${orderStr(holds[0], N)}.`, `Correcta: es cierta en ${holds.length} de ${sols.length} configuraciones, por ejemplo ${orderStr(holds[0], N)}.`)
+            : L(`Impossible: it is false in all ${sols.length} valid arrangements.`, `Imposible: es falsa en las ${sols.length} configuraciones válidas.`);
         }
-        const label = { must: 'es cierta en todas las configuraciones', cannot: 'es falsa en todas las configuraciones', could: 'es cierta al menos en una configuración' }[ex.kind];
-        steps.push(X.step('Eliminación de opciones', `Se clasifica cada afirmación: ${label} ↔ cumple la pregunta.`));
+        const label = {
+          must: L('it is true in every arrangement', 'es cierta en todas las configuraciones'),
+          cannot: L('it is false in every arrangement', 'es falsa en todas las configuraciones'),
+          could: L('it is true in at least one arrangement', 'es cierta al menos en una configuración'),
+        }[ex.kind];
+        steps.push(X.step(L('Eliminating options', 'Eliminación de opciones'), L(`Each statement is classified: ${label} ↔ it answers the question.`, `Se clasifica cada afirmación: ${label} ↔ cumple la pregunta.`)));
         const right = ex.options.find((o) => o.id === ex.correctAnswer);
-        steps.push(X.step('Conclusión', `La respuesta es la ${ex.correctAnswer}: «${right.text}».`));
+        steps.push(X.step(L('Conclusion', 'Conclusión'), L(`The answer is ${ex.correctAnswer}: «${right.text}».`, `La respuesta es la ${ex.correctAnswer}: «${right.text}».`)));
         visual = { type: 'order', rows: sample };
       }
     }
@@ -385,10 +414,11 @@
     const n = N.length;
     if (new Set(N).size !== n) errors.push('duplicate item names');
     // Statement text must be derived from exactly the constraints the solver uses
-    const rules = ex.constraints.map((c) => sentence(c, N));
+    const DN = decor(N, ex.data.category);
+    const rules = ex.constraints.map((c) => sentence(c, DN));
     if (!same(rules, ex.data.rules)) errors.push('rules text does not match constraints');
     if (ex.meta.constraintCount !== ex.constraints.length) errors.push('constraintCount mismatch');
-    if (ex.question !== buildQuestion(ex.kind, ex.data.query, N, n)) errors.push('question text does not match query');
+    if (ex.question !== buildQuestion(ex.kind, ex.data.query, DN, n)) errors.push('question text does not match query');
 
     const sols = S.solveOrdering(n, ex.constraints);
     if (sols.length === 0) errors.push('constraints are contradictory (0 solutions)');

@@ -2,9 +2,10 @@
 const path = require('path');
 const root = path.join(__dirname, '..', 'js');
 const FILES = [
+  'lib/i18n', 'lib/i18n-en', 'lib/i18n-es', 'lib/figures', 'lib/sequences',
   'engines/random', 'engines/difficulty', 'engines/intervals', 'engines/solver', 'engines/explanation', 'engines/validator', 'engines/generator',
-  'data/pools', 'data/vocabulary', 'data/grammar', 'data/templates',
-  'modules/positional', 'modules/scheduling', 'modules/scheduling-kinds', 'modules/calendar', 'modules/english',
+  'data/pools', 'data/vocabulary', 'data/grammar', 'data/templates', 'data/notes-en',
+  'modules/positional', 'modules/scheduling', 'modules/scheduling-kinds', 'modules/calendar', 'modules/english', 'modules/inductive',
   'data/fallbacks',
   'statistics', 'storage', 'timer', 'state',
 ];

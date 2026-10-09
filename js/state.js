@@ -12,6 +12,7 @@
   function createState(opts = {}) {
     const timerFactory = opts.timerFactory || ((o) => new RT.Timer(o));
     const data = RT.storage.load();
+    RT.i18n.setLang(data.settings.lang);
     const listeners = new Set();
 
     const st = {
@@ -37,8 +38,36 @@
       emit();
     }
 
+    /** Same exercise (same seed), rebuilt in the current language; keeps timer, selection and result. */
+    function relocalize() {
+      const ex = st.exercise;
+      if (!ex || ex.lang === RT.i18n.lang) return;
+      let fresh = null;
+      try {
+        if (ex.meta && ex.meta.fallback) {
+          const pool = ((((RT.fallbacks || {})[RT.i18n.lang] || {})[ex.module]) || {})[ex.difficulty] || [];
+          fresh = pool.find((e) => e.id === ex.id);
+          fresh = fresh ? JSON.parse(JSON.stringify(fresh)) : null;
+          if (fresh) fresh.meta = Object.assign({}, fresh.meta, { fallback: true });
+        } else {
+          fresh = RT.generator.generateFromSeed(ex.module, ex.difficulty, ex.seed).exercise;
+        }
+      } catch (e) {
+        fresh = null;
+      }
+      if (fresh) {
+        fresh.createdAt = ex.createdAt;
+        fresh.timeLimit = ex.timeLimit;
+        st.exercise = fresh;
+      }
+    }
+
     function updateSettings(patch) {
       st.settings = RT.storage.sanitize({ settings: Object.assign({}, st.settings, patch) }).settings;
+      if (patch.lang && RT.i18n.lang !== st.settings.lang) {
+        RT.i18n.setLang(st.settings.lang);
+        relocalize();
+      }
       persist();
       emit();
     }
