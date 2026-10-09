@@ -1,7 +1,8 @@
 /**
  * english.js — MODULE D: Contractual & Advanced English.
  *
- * Question and options are in English; the explanation is in Spanish.
+ * Question and options are always English (it is an English test); instructions and explanations follow the UI
+ * language (EN/ES). Spanish notes live next to the bank items, English ones in data/notes-en.js (overlay by item id).
  * Priority order: natural English > precision > professional relevance > difficulty > randomness.
  *
  * Quality gates (run by verify() on every generated exercise, and by lintBank() on the whole bank):
@@ -21,10 +22,37 @@
   const LETTERS = ['A', 'B', 'C', 'D', 'E'];
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const wordCount = (s) => s.trim().split(/\s+/).length;
-  const when = (day) => (day >= 100 ? `${String(Math.floor(day / 60)).padStart(2, '0')}:${String(day % 60).padStart(2, '0')}` : `día ${day}`);
+  const L = (en, es) => RT.i18n.pick(en, es);
+  const when = (day) => {
+    const hhmm = `${String(Math.floor(day / 60)).padStart(2, '0')}:${String(day % 60).padStart(2, '0')}`;
+    return day >= 100 ? L(`at ${hhmm}`, `a las ${hhmm}`) : L(`on day ${day}`, `el día ${day}`);
+  };
+  const EN = () => RT.data.notesEn;
+
+  /* language-aware access to the written reasons stored with the bank */
+  const itemNote = (item, i) => (RT.i18n.lang === 'es' ? item.notes[i] : EN().items[item.id].notes[i]);
+  const itemRule = (item) => (!item.rule ? null : RT.i18n.lang === 'es' ? item.rule : EN().items[item.id].rule || item.rule);
+  const itemDiff = (item) => (!item.diff ? null : RT.i18n.lang === 'es' ? item.diff : EN().items[item.id].diff || item.diff);
+  const claimWhy = (p, i) => (RT.i18n.lang === 'es' ? p.claims[i].why : EN().claims[p.id][i]);
 
   const bankFor = (cat) => (cat === 'prepositions' ? RT.data.prepositions : RT.data.vocabulary[cat]);
-  const instructionFor = (cat, item) => (cat === 'synonyms' ? T.SYN_INSTR[item.mode] : T.categories[cat].instruction);
+  const instructionFor = (cat, item) => {
+    const en = cat === 'synonyms' ? T.SYN_INSTR[item.mode] : T.categories[cat].instruction;
+    return L(en, ES_INSTR[en] || en);
+  };
+  const ES_INSTR = {
+    'Choose the word or phrase that best completes the sentence.': 'Elige la palabra o expresión que mejor completa la frase.',
+    'Choose the preposition that correctly completes the sentence.': 'Elige la preposición que completa correctamente la frase.',
+    'Choose the verb form that correctly completes the sentence.': 'Elige la forma verbal que completa correctamente la frase.',
+    'Read the text and answer the question.': 'Lee el texto y responde a la pregunta.',
+    'Choose the word or phrase closest in meaning to the word in capitals.': 'Elige la palabra o expresión de significado más cercano a la palabra en mayúsculas.',
+    'Choose the word or phrase opposite in meaning to the word in capitals.': 'Elige la palabra o expresión de significado opuesto a la palabra en mayúsculas.',
+  };
+  const CAT_LABEL_ES = {
+    vocabulary: 'Vocabulario y colocaciones', synonyms: 'Sinónimos / antónimos', contractual: 'Inglés contractual',
+    fidic: 'FIDIC / gestión de proyectos', prepositions: 'Preposiciones', sva: 'Concordancia sujeto–verbo', reading: 'Lectura e inferencia',
+  };
+  const catLabel = (cat) => L(T.categories[cat].label, CAT_LABEL_ES[cat]);
 
   /* ------------------------------- lint ----------------------------------- */
 
@@ -37,6 +65,14 @@
     if (!(item.answer >= 0 && item.answer < item.options.length)) e.push(`${id}: answer index out of range`);
     if (!item.notes || item.notes.length !== item.options.length) e.push(`${id}: notes must match options`);
     else item.notes.forEach((n, i) => { if (!n || n.trim().length < 8) e.push(`${id}: option ${i} lacks a written reason`); });
+    const en = EN() && EN().items[item.id];
+    if (!en) e.push(`${id}: missing English notes`);
+    else {
+      if (en.notes.length !== item.options.length) e.push(`${id}: English notes must match options`);
+      else en.notes.forEach((n, i) => { if (!n || n.trim().length < 8) e.push(`${id}: English option ${i} lacks a written reason`); });
+      if (!!item.rule !== !!en.rule && item.rule) e.push(`${id}: English rule missing`);
+      if (!!item.diff !== !!en.diff && item.diff) e.push(`${id}: English difference missing`);
+    }
     if (cat === 'synonyms') {
       if (!item.target || !item.stem.toLowerCase().includes(item.target.toLowerCase())) e.push(`${id}: target word missing in stem`);
       if (texts.includes(item.target.toLowerCase())) e.push(`${id}: an option repeats the target word`);
@@ -64,7 +100,10 @@
     p.claims.forEach((c, i) => {
       if (!['supported', 'contradicted', 'unsupported'].includes(c.label)) e.push(`${p.id}: claim ${i} bad label`);
       if (!c.why || c.why.length < 10) e.push(`${p.id}: claim ${i} lacks justification`);
+      const w = EN() && EN().claims[p.id] && EN().claims[p.id][i];
+      if (!w || w.length < 10) e.push(`${p.id}: claim ${i} lacks English justification`);
     });
+    if (EN() && EN().claims[p.id] && EN().claims[p.id].length !== p.claims.length) e.push(`${p.id}: English claims must match claims`);
     const texts = p.claims.map((c) => c.text);
     if (new Set(texts).size !== texts.length) e.push(`${p.id}: duplicate claims`);
     for (const k of ['past', 'planned']) {
@@ -99,17 +138,17 @@
     const hasBlank = ex.question.includes('____');
 
     if (ex.kind === 'reading') {
-      steps.push(X.step('Respuesta', `La respuesta correcta es la ${correct.id}: «${correct.text}».`));
-      steps.push(X.step('Evidencia', correct.payload.note));
-      steps.push(X.step('Eliminación de opciones', 'Cada alternativa se contrasta con lo que el texto dice realmente:', ex.options.filter((o) => o.id !== correct.id).map((o) => `${o.id}) ${o.payload.note}`)));
-      visual = { type: 'english', passage: ex.data.passage, highlight: null, rule: 'Una afirmación solo está respaldada si el texto la dice o la implica de forma necesaria; lo plausible pero no mencionado NO se puede inferir.', diff: null };
+      steps.push(X.step(L('Answer', 'Respuesta'), L(`The correct answer is ${correct.id}: “${correct.text}”`, `La respuesta correcta es la ${correct.id}: «${correct.text}».`)));
+      steps.push(X.step(L('Evidence', 'Evidencia'), correct.payload.note));
+      steps.push(X.step(L('Eliminating options', 'Eliminación de opciones'), L('Each alternative is checked against what the text actually says:', 'Cada alternativa se contrasta con lo que el texto dice realmente:'), ex.options.filter((o) => o.id !== correct.id).map((o) => `${o.id}) ${o.payload.note}`)));
+      visual = { type: 'english', passage: ex.data.passage, highlight: null, rule: L('A statement is supported only if the text says it or necessarily implies it; what is plausible but not mentioned CANNOT be inferred.', 'Una afirmación solo está respaldada si el texto la dice o la implica de forma necesaria; lo plausible pero no mencionado NO se puede inferir.'), diff: null };
     } else {
       const completed = hasBlank ? ex.question.replace('____', correct.text) : ex.question;
-      steps.push(X.step('Respuesta', `La opción correcta es «${correct.text}».`));
-      if (ex.data.rule) steps.push(X.step('Regla', ex.data.rule));
-      steps.push(X.step('Por qué es correcta', correct.payload.note));
-      steps.push(X.step('Eliminación de opciones', 'Las demás opciones fallan por motivos concretos:', ex.options.filter((o) => o.id !== correct.id).map((o) => `${o.id}) «${o.text}»: ${o.payload.note}`)));
-      if (ex.data.diff) steps.push(X.step('Diferencia de significado', ex.data.diff));
+      steps.push(X.step(L('Answer', 'Respuesta'), L(`The correct option is “${correct.text}”.`, `La opción correcta es «${correct.text}».`)));
+      if (ex.data.rule) steps.push(X.step(L('Rule', 'Regla'), ex.data.rule));
+      steps.push(X.step(L('Why it is correct', 'Por qué es correcta'), correct.payload.note));
+      steps.push(X.step(L('Eliminating options', 'Eliminación de opciones'), L('The other options fail for specific reasons:', 'Las demás opciones fallan por motivos concretos:'), ex.options.filter((o) => o.id !== correct.id).map((o) => `${o.id}) ${RT.i18n.q(o.text)}: ${o.payload.note}`)));
+      if (ex.data.diff) steps.push(X.step(L('Difference in meaning', 'Diferencia de significado'), ex.data.diff));
       visual = { type: 'english', completed, highlight: correct.text, rule: ex.data.rule || null, diff: ex.data.diff || null };
     }
     return { steps, visual, optionNotes: notes };
@@ -121,7 +160,7 @@
     const ex = {
       kind: cat,
       question,
-      data: Object.assign({ instruction, category: cat, categoryLabel: T.categories[cat].label, rules: [] }, data),
+      data: Object.assign({ instruction, category: cat, categoryLabel: catLabel(cat), rules: [] }, data),
       constraints: [],
       options,
       correctAnswer: correctId,
@@ -142,9 +181,9 @@
     const item = pickItem(rng, bankFor(cat), level);
     if (!item) return null;
     const order = rng.shuffle(item.options.map((_, i) => i));
-    const options = order.map((old, k) => ({ id: LETTERS[k], text: item.options[old], payload: { note: item.notes[old] } }));
+    const options = order.map((old, k) => ({ id: LETTERS[k], text: item.options[old], payload: { note: itemNote(item, old) } }));
     const correctId = LETTERS[order.indexOf(item.answer)];
-    return base(cat, item.level, item.stem, instructionFor(cat, item), options, correctId, { itemId: item.id, rule: item.rule || null, diff: item.diff || null });
+    return base(cat, item.level, item.stem, instructionFor(cat, item), options, correctId, { itemId: item.id, rule: itemRule(item), diff: itemDiff(item) });
   }
 
   function fromSva(rng, level) {
@@ -152,7 +191,7 @@
     const forms = rng.shuffle(g.forms);
     const options = forms.map((f, k) => ({ id: LETTERS[k], text: f, payload: { note: G.noteFor(g.spec, f) } }));
     const correctId = LETTERS[forms.indexOf(g.correct)];
-    return base('sva', level, g.stem, T.categories.sva.instruction, options, correctId, { sva: g.spec, rule: g.spec.ruleEs, diff: null }, { pattern: g.spec.pattern });
+    return base('sva', level, g.stem, T.categories.sva.instruction, options, correctId, { sva: g.spec, rule: G.ruleFor(g.spec), diff: null }, { pattern: g.spec.pattern });
   }
 
   const READ_Q = {
@@ -185,8 +224,8 @@
       const right = rng.pick(rightPool);
       const wrong = rng.sample(wrongPool, 3);
       const mk = (x, ok) => {
-        const prefix = x.c.label === 'supported' ? 'Respaldada por el texto' : x.c.label === 'contradicted' ? 'Contradice el texto' : 'No se puede inferir';
-        return { text: x.c.text, ok, payload: { claim: x.i, label: x.c.label, note: `${prefix}: ${x.c.why}` } };
+        const prefix = x.c.label === 'supported' ? L('Supported by the text', 'Respaldada por el texto') : x.c.label === 'contradicted' ? L('Contradicts the text', 'Contradice el texto') : L('Cannot be inferred', 'No se puede inferir');
+        return { text: x.c.text, ok, payload: { claim: x.i, label: x.c.label, note: `${prefix}: ${claimWhy(p, x.i)}` } };
       };
       rows = [mk(right, true), ...wrong.map((w) => mk(w, false))];
     } else {
@@ -194,7 +233,7 @@
       const chosen = rng.sample(pool, Math.min(4, pool.length));
       const days = chosen.map((f) => f.day);
       const target = qType.endsWith('First') ? Math.min(...days) : Math.max(...days);
-      rows = chosen.map((f) => ({ text: f.text, ok: f.day === target, payload: { day: f.day, note: `Según el texto ocurre ${when(f.day)}.` } }));
+      rows = chosen.map((f) => ({ text: f.text, ok: f.day === target, payload: { day: f.day, note: L(`According to the text it happens ${when(f.day)}.`, `Según el texto ocurre ${when(f.day)}.`) } }));
     }
     const shuffled = rng.shuffle(rows);
     const options = shuffled.map((r, k) => ({ id: LETTERS[k], text: r.text, payload: r.payload }));
@@ -229,7 +268,7 @@
         validity[o.id] = G.validForm(spec, o.text);
         if (o.payload.note !== G.noteFor(spec, o.text)) errors.push(`note for ${o.id} does not match the engine`);
       }
-      if (spec.ruleEs !== ex.data.rule) errors.push('rule text does not match the SVA spec');
+      if (G.ruleFor(spec) !== ex.data.rule) errors.push('rule text does not match the SVA spec');
     } else if (cat === 'reading') {
       const p = T.readings.find((r) => r.id === ex.data.passageId);
       if (!p) errors.push('unknown passage');
@@ -237,7 +276,9 @@
         errors.push(...lintReading(p));
         if (ex.data.passage !== p.text) errors.push('passage text does not match the source passage');
         if (ex.question !== READ_Q[ex.data.qType]) errors.push('question text does not match question type');
+        if (ex.data.passage !== p.text) errors.push('passage text mismatch');
         for (const o of ex.options) {
+          if (o.payload.claim !== undefined && !o.payload.note.endsWith(claimWhy(p, o.payload.claim))) errors.push(`note for ${o.id} does not match the claim justification`);
           if (ex.data.qType === 'supported') validity[o.id] = p.claims[o.payload.claim].label === 'supported' && p.claims[o.payload.claim].text === o.text;
           else if (ex.data.qType === 'cannot') validity[o.id] = p.claims[o.payload.claim].label !== 'supported' && p.claims[o.payload.claim].text === o.text;
           else {
@@ -255,7 +296,11 @@
         errors.push(...lintItem(item, cat));
         if (item.stem !== ex.question) errors.push('stem does not match bank item');
         if (!same(item.options.slice().sort(), ex.options.map((o) => o.text).sort())) errors.push('options do not match bank item');
-        for (const o of ex.options) validity[o.id] = o.text === item.options[item.answer];
+        for (const o of ex.options) {
+          validity[o.id] = o.text === item.options[item.answer];
+          if (o.payload.note !== itemNote(item, item.options.indexOf(o.text))) errors.push(`note for ${o.id} does not match the bank item`);
+        }
+        if ((ex.data.rule || null) !== itemRule(item) || (ex.data.diff || null) !== itemDiff(item)) errors.push('rule/difference does not match the bank item');
       }
     }
     const ok = Object.keys(validity).filter((k) => validity[k]);
@@ -271,5 +316,5 @@
     generate,
     verify,
   });
-  RT.english = { lintBank, lintItem, lintReading, buildExplanation, bankFor };
+  RT.english = { itemNote, claimWhy, catLabel, lintBank, lintItem, lintReading, buildExplanation, bankFor };
 })();

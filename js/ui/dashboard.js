@@ -2,18 +2,10 @@
 (function () {
   const RT = (globalThis.RT = globalThis.RT || {});
   const { h } = RT.ui;
+  const t = (k, p) => RT.i18n.t(k, p);
 
-  const MODULE_INFO = {
-    scheduling: { icon: '⏱', es: 'Planificación de recursos', hint: 'Intervalos, solapes y ventanas libres' },
-    positional: { icon: '↔', es: 'Restricciones posicionales', hint: 'Ordenar elementos con reglas lógicas' },
-    calendar: { icon: '▦', es: 'Lógica de calendario', hint: 'Fechas en las que todo el equipo puede trabajar' },
-    english: { icon: 'Aa', es: 'Inglés contractual y avanzado', hint: 'Vocabulario, gramática, contratos y lectura' },
-  };
-  const MODE_INFO = {
-    training: 'Entrenamiento (cronómetro ascendente, sin límite)',
-    trial: 'Contrarreloj (cuenta atrás; al agotarse cuenta como fallo)',
-  };
-  const LEVEL_HINT = { 1: 'Pocas reglas, directas', 2: 'Más reglas, algunas indirectas', 3: 'Muchas reglas, condicionales y trampas' };
+  const ICON = { scheduling: '⏱', positional: '↔', calendar: '▦', inductive: '◭', english: 'Aa' };
+  const MODULES = ['scheduling', 'positional', 'calendar', 'inductive', 'english'];
 
   function radioGroup(name, legend, items, current, onChange, cls) {
     return h('fieldset', { class: 'choice ' + (cls || '') },
@@ -30,30 +22,30 @@
   function render(app) {
     const s = app.state;
     const set = s.settings;
-    const mods = Object.keys(MODULE_INFO).map((m) => ({ value: m, label: MODULE_INFO[m].es, hint: MODULE_INFO[m].hint, icon: MODULE_INFO[m].icon }));
-    const lvls = [1, 2, 3].map((l) => ({ value: l, label: RT.difficulty.level(l).name, hint: LEVEL_HINT[l] }));
-    const modes = Object.keys(MODE_INFO).map((m) => ({ value: m, label: MODE_INFO[m].split(' (')[0], hint: MODE_INFO[m].match(/\((.*)\)/)[1] }));
+    const mods = MODULES.map((m) => ({ value: m, label: t('module.' + m), hint: t('module.' + m + '.hint'), icon: ICON[m] }));
+    const lvls = [1, 2, 3].map((l) => ({ value: l, label: t('level.' + l), hint: t('level.' + l + '.hint') }));
+    const modes = ['training', 'trial'].map((m) => ({ value: m, label: t('mode.' + m), hint: t('mode.' + m + '.hint') }));
     const limits = [60, 75, 90].map((n) => ({ value: n, label: n + ' s' }));
     const st = s.stats;
 
     return h('section', { class: 'screen dashboard', 'aria-labelledby': 'h-dash' },
-      h('h1', { id: 'h-dash', tabindex: '-1' }, 'Reasoning & Contractual English Trainer'),
-      h('p', { class: 'lead' }, 'Elige módulo, nivel y modo. Cada ejercicio se genera, se resuelve y se valida automáticamente antes de mostrarse.'),
-      radioGroup('module', 'Módulo', mods, set.module, (v) => app.updateSettings({ module: v }), 'choice-modules'),
+      h('h1', { id: 'h-dash', tabindex: '-1' }, t('app.title')),
+      h('p', { class: 'lead' }, t('dash.lead')),
+      radioGroup('module', t('dash.module'), mods, set.module, (v) => app.updateSettings({ module: v }), 'choice-modules'),
       h('div', { class: 'row-2' },
-        radioGroup('difficulty', 'Nivel', lvls, set.difficulty, (v) => app.updateSettings({ difficulty: Number(v) })),
-        radioGroup('mode', 'Modo', modes, set.mode, (v) => app.updateSettings({ mode: v }))),
-      set.mode === 'trial' ? radioGroup('trialLimit', 'Tiempo por ejercicio', limits, set.trialLimit, (v) => app.updateSettings({ trialLimit: Number(v) }), 'choice-inline') : null,
+        radioGroup('difficulty', t('dash.level'), lvls, set.difficulty, (v) => app.updateSettings({ difficulty: Number(v) })),
+        radioGroup('mode', t('dash.mode'), modes, set.mode, (v) => app.updateSettings({ mode: v }))),
+      set.mode === 'trial' ? radioGroup('trialLimit', t('dash.trial'), limits, set.trialLimit, (v) => app.updateSettings({ trialLimit: Number(v) }), 'choice-inline') : null,
       h('div', { class: 'actions' },
-        h('button', { type: 'button', class: 'btn btn-primary btn-lg', id: 'btn-start', onclick: () => app.startExercise() }, 'Empezar'),
-        h('button', { type: 'button', class: 'btn', onclick: () => app.showStats() }, 'Estadísticas')),
+        h('button', { type: 'button', class: 'btn btn-primary btn-lg', id: 'btn-start', onclick: () => app.startExercise() }, t('dash.start')),
+        h('button', { type: 'button', class: 'btn', onclick: () => app.showStats() }, t('dash.stats'))),
       st.totalQuestions
-        ? h('p', { class: 'muted' }, `Llevas ${st.totalQuestions} ejercicios · precisión ${Math.round(RT.statistics.accuracy(st) * 100)}% · racha actual ${st.currentStreak}`)
-        : h('p', { class: 'muted' }, 'Todavía no hay estadísticas.'),
+        ? h('p', { class: 'muted' }, t('dash.summary', { n: st.totalQuestions, acc: Math.round(RT.statistics.accuracy(st) * 100), streak: st.currentStreak }))
+        : h('p', { class: 'muted' }, t('dash.nostats')),
       h('label', { class: 'debug-toggle' },
         h('input', { type: 'checkbox', checked: !!set.debug, onchange: (e) => app.updateSettings({ debug: e.target.checked }) }),
-        ' Modo debug (ID, seed, restricciones, nº de soluciones…)'));
+        ' ' + t('dash.debug')));
   }
 
-  RT.ui.dashboard = { render, MODULE_INFO };
+  RT.ui.dashboard = { render, MODULES };
 })();

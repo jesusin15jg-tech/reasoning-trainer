@@ -12,8 +12,14 @@
   const D = RT.difficulty;
   const X = RT.explanation;
   const { KINDS, withIds, same, hm, span } = RT.scheduling;
+  const L = (en, es) => RT.i18n.pick(en, es);
 
-  const REL_ES = { NO_OVERLAP: 'NO OVERLAP (separados)', ADJACENT: 'ADJACENT (se tocan; no es conflicto)', PARTIAL_OVERLAP: 'PARTIAL OVERLAP (conflicto)', FULL_OVERLAP: 'FULL OVERLAP (conflicto)' };
+  const relText = (r) => ({
+    NO_OVERLAP: L('NO OVERLAP (separate)', 'NO OVERLAP (separados)'),
+    ADJACENT: L('ADJACENT (they touch; not a conflict)', 'ADJACENT (se tocan; no es conflicto)'),
+    PARTIAL_OVERLAP: L('PARTIAL OVERLAP (conflict)', 'PARTIAL OVERLAP (conflicto)'),
+    FULL_OVERLAP: L('FULL OVERLAP (conflict)', 'FULL OVERLAP (conflicto)'),
+  })[r];
   const isConflict = (rel) => rel === 'PARTIAL_OVERLAP' || rel === 'FULL_OVERLAP';
   const rel = (a, b) => I.classify(I.mk(a.start, a.end), I.mk(b.start, b.end));
 
@@ -25,13 +31,14 @@
     const name = (id) => base.machines.find((m) => m.id === id).name;
     if (r.type === 'block') {
       return r.kind === 'maintenance'
-        ? `${name(r.machine)} is under maintenance (${r.label}) from ${span(r.start, r.end)}.`
-        : `${name(r.machine)} is running "${r.label}" from ${span(r.start, r.end)}.`;
+        ? L(`${name(r.machine)} is under maintenance (${r.label}) from ${span(r.start, r.end)}.`, `${name(r.machine)}: en mantenimiento (${r.label}) de ${span(r.start, r.end)}.`)
+        : L(`${name(r.machine)} is running "${r.label}" from ${span(r.start, r.end)}.`, `${name(r.machine)}: ejecuta «${r.label}» de ${span(r.start, r.end)}.`);
     }
-    return `${name(r.a)} and ${name(r.b)} cannot run tasks at the same time (shared power supply).`;
+    return L(`${name(r.a)} and ${name(r.b)} cannot run tasks at the same time (shared power supply).`, `${name(r.a)} y ${name(r.b)} no pueden ejecutar tareas a la vez (alimentación eléctrica compartida).`);
   }
 
-  const compatQuestion = (base) => `A ${base.job.end - base.job.start}-minute "${base.job.name}" must run from ${hm(base.job.start)} to ${hm(base.job.end)}. Which machine can host it?`;
+  const compatQuestion = (base) => L(`A ${base.job.end - base.job.start}-minute "${base.job.name}" must run from ${hm(base.job.start)} to ${hm(base.job.end)}. Which machine can host it?`,
+    `«${base.job.name}», de ${base.job.end - base.job.start} minutos, debe ejecutarse de ${hm(base.job.start)} a ${hm(base.job.end)}. ¿Qué máquina puede alojarlo?`);
 
   /** machine validity from rules, using interval relations */
   function compatAnalysis(ex) {
@@ -76,23 +83,25 @@
   function explainCompat(ex) {
     const { base } = ex.data;
     const an = compatAnalysis(ex);
-    const steps = [X.step('Datos', `Franja del trabajo: ${hm(base.job.start)}–${hm(base.job.end)}. Una máquina sirve solo si ningún bloqueo suyo se solapa con esa franja (PARTIAL/FULL OVERLAP); ADJACENT y NO OVERLAP no cuentan.`)];
+    const steps = [X.step(L('Data', 'Datos'), L(`Job slot: ${hm(base.job.start)}–${hm(base.job.end)}. A machine works only if none of its blocks overlaps that slot (PARTIAL/FULL OVERLAP); ADJACENT and NO OVERLAP do not count.`,
+      `Franja del trabajo: ${hm(base.job.start)}–${hm(base.job.end)}. Una máquina sirve solo si ningún bloqueo suyo se solapa con esa franja (PARTIAL/FULL OVERLAP); ADJACENT y NO OVERLAP no cuentan.`))];
     for (const m of base.machines) {
       const a = an[m.id];
-      const parts = a.own.map((x) => `«${x.r.label}» ${I.fmtRange(x.r)} → ${REL_ES[x.rel]}`);
-      for (const v of a.viaLink) parts.push(`${base.machines.find((q) => q.id === v.other).name} ejecuta «${v.r.label}» ${I.fmtRange(v.r)} en la franja y está enlazada por la regla de exclusión → conflicto`);
-      steps.push(X.step(m.name, parts.length ? parts.join('; ') + '.' : 'Sin bloqueos.', null));
+      const parts = a.own.map((x) => `${RT.i18n.q(x.r.label)} ${I.fmtRange(x.r)} → ${relText(x.rel)}`);
+      for (const v of a.viaLink) { const on = base.machines.find((q) => q.id === v.other).name; parts.push(L(`${on} runs «${v.r.label}» ${I.fmtRange(v.r)} in the slot and is linked by the exclusion rule → conflict`, `${on} ejecuta «${v.r.label}» ${I.fmtRange(v.r)} en la franja y está enlazada por la regla de exclusión → conflicto`)); }
+      steps.push(X.step(m.name, parts.length ? parts.join('; ') + '.' : L('No blocks.', 'Sin bloqueos.'), null));
     }
     const right = base.machines.filter((m) => an[m.id].valid).map((m) => m.name);
-    steps.push(X.step('Conclusión', `Solo ${right.join(', ')} queda libre durante toda la franja.`));
+    steps.push(X.step(L('Conclusion', 'Conclusión'), L(`Only ${right.join(', ')} stays free during the whole slot.`, `Solo ${right.join(', ')} queda libre durante toda la franja.`)));
     const notes = {};
     for (const o of ex.options) {
       const m = base.machines.find((q) => q.id === o.payload.machine);
       const a = an[m.id];
-      if (a.valid) notes[o.id] = 'Correcta: ningún bloqueo se solapa con la franja.';
+      if (a.valid) notes[o.id] = L('Correct: no block overlaps the slot.', 'Correcta: ningún bloqueo se solapa con la franja.');
       else {
         const c = a.own.find((x) => isConflict(x.rel));
-        notes[o.id] = c ? `Incorrecta: «${c.r.label}» ${I.fmtRange(c.r)} es ${c.rel.replace('_', ' ')} con la franja.` : `Incorrecta: la regla de exclusión con ${base.machines.find((q) => q.id === a.viaLink[0].other).name} lo impide.`;
+        notes[o.id] = c ? L(`Wrong: «${c.r.label}» ${I.fmtRange(c.r)} is ${c.rel.replace('_', ' ')} with the slot.`, `Incorrecta: «${c.r.label}» ${I.fmtRange(c.r)} es ${c.rel.replace('_', ' ')} con la franja.`)
+          : (() => { const on = base.machines.find((q) => q.id === a.viaLink[0].other).name; return L(`Wrong: the exclusion rule with ${on} rules it out.`, `Incorrecta: la regla de exclusión con ${on} lo impide.`); })();
       }
     }
     const rows = base.machines.map((m) => ({
@@ -102,7 +111,7 @@
         cls: isConflict(I.classify(I.mk(base.job.start, base.job.end), I.mk(r.start, r.end))) ? 'conflict' : r.kind === 'maintenance' ? 'maint' : 'task',
       })),
     }));
-    rows.push({ label: 'Job slot', blocks: [{ start: base.job.start, end: base.job.end, cls: 'answer', label: base.job.name }] });
+    rows.push({ label: L('Job slot', 'Franja del trabajo'), blocks: [{ start: base.job.start, end: base.job.end, cls: 'answer', label: base.job.name }] });
     return { steps, visual: { type: 'timeline', dayStart: base.dayStart, dayEnd: base.dayEnd, rows }, optionNotes: notes };
   }
 
@@ -176,7 +185,8 @@
         kind: 'compatible',
         question: compatQuestion(base),
         data: {
-          intro: `Working day: ${hm(dayStart)}–${hm(dayEnd)}. A machine is available only if none of its commitments overlaps the slot; touching at an end point is not an overlap.`,
+          intro: L(`Working day: ${hm(dayStart)}–${hm(dayEnd)}. A machine is available only if none of its commitments overlaps the slot; touching at an end point is not an overlap.`,
+            `Jornada de trabajo: ${hm(dayStart)}–${hm(dayEnd)}. Una máquina está disponible solo si ninguno de sus compromisos se solapa con la franja; tocarse en un extremo no es solaparse.`),
           base,
           rules: shuffled.map((r) => compatRuleText(r, base)),
         },
@@ -216,10 +226,11 @@
   /* ===================================================================== */
 
   const itemText = (it, machine) => (it.kind === 'maintenance'
-    ? `${machine} has scheduled maintenance (${it.label}) from ${span(it.start, it.end)}.`
-    : `${machine} runs "${it.label}" from ${span(it.start, it.end)}.`);
-  const conflictQuestion = (machine) => `Which two items on ${machine}'s schedule conflict (overlap in time)? Items that only touch — one ends exactly when the other starts — do NOT conflict.`;
-  const pairText = (a, b) => `"${a}" and "${b}"`;
+    ? L(`${machine} has scheduled maintenance (${it.label}) from ${span(it.start, it.end)}.`, `${machine}: mantenimiento programado (${it.label}) de ${span(it.start, it.end)}.`)
+    : L(`${machine} runs "${it.label}" from ${span(it.start, it.end)}.`, `${machine}: ejecuta «${it.label}» de ${span(it.start, it.end)}.`));
+  const conflictQuestion = (machine) => L(`Which two items on ${machine}'s schedule conflict (overlap in time)? Items that only touch — one ends exactly when the other starts — do NOT conflict.`,
+    `¿Qué dos elementos de la planificación de ${machine} entran en conflicto (se solapan en el tiempo)? Los elementos que solo se tocan —uno termina justo cuando empieza el otro— NO entran en conflicto.`);
+  const pairText = (a, b) => L(`"${a}" and "${b}"`, `«${a}» y «${b}»`);
 
   function conflictPairs(items) {
     const out = [];
@@ -237,15 +248,15 @@
     const bad = pairs.filter((p) => isConflict(p.rel));
     const adj = pairs.filter((p) => p.rel === 'ADJACENT');
     const steps = [
-      X.step('Datos', `Se ordenan los elementos por hora de inicio: ${sorted.map((i) => `«${i.label}» ${I.fmtRange(i)}`).join('; ')}.`),
-      X.step('Pares que se tocan', adj.length ? `${adj.map((p) => `«${p.a.label}»–«${p.b.label}»`).join(', ')}: uno termina justo cuando empieza el otro → ADJACENT, no hay conflicto.` : 'Ningún par se toca exactamente en un extremo.'),
-      X.step('Conflicto', bad.map((p) => `«${p.a.label}» ${I.fmtRange(p.a)} y «${p.b.label}» ${I.fmtRange(p.b)} comparten tiempo → ${p.rel.replace('_', ' ')}.`).join(' ')),
-      X.step('Conclusión', `El único par en conflicto es «${bad[0].a.label}» y «${bad[0].b.label}»; el resto de pares están separados o solo se tocan.`),
+      X.step(L('Data', 'Datos'), L(`The items are sorted by start time: ${sorted.map((i) => `«${i.label}» ${I.fmtRange(i)}`).join('; ')}.`, `Se ordenan los elementos por hora de inicio: ${sorted.map((i) => `«${i.label}» ${I.fmtRange(i)}`).join('; ')}.`)),
+      X.step(L('Pairs that touch', 'Pares que se tocan'), adj.length ? L(`${adj.map((p) => `«${p.a.label}»–«${p.b.label}»`).join(', ')}: one ends exactly when the other starts → ADJACENT, no conflict.`, `${adj.map((p) => `«${p.a.label}»–«${p.b.label}»`).join(', ')}: uno termina justo cuando empieza el otro → ADJACENT, no hay conflicto.`) : L('No pair touches exactly at an end point.', 'Ningún par se toca exactamente en un extremo.')),
+      X.step(L('Conflict', 'Conflicto'), bad.map((p) => L(`«${p.a.label}» ${I.fmtRange(p.a)} and «${p.b.label}» ${I.fmtRange(p.b)} share time → ${p.rel.replace('_', ' ')}.`, `«${p.a.label}» ${I.fmtRange(p.a)} y «${p.b.label}» ${I.fmtRange(p.b)} comparten tiempo → ${p.rel.replace('_', ' ')}.`)).join(' ')),
+      X.step(L('Conclusion', 'Conclusión'), L(`The only conflicting pair is «${bad[0].a.label}» and «${bad[0].b.label}»; the other pairs are separate or merely touch.`, `El único par en conflicto es «${bad[0].a.label}» y «${bad[0].b.label}»; el resto de pares están separados o solo se tocan.`)),
     ];
     const notes = {};
     for (const o of ex.options) {
       const p = pairs.find((q) => (q.a.label === o.payload.a && q.b.label === o.payload.b) || (q.a.label === o.payload.b && q.b.label === o.payload.a));
-      notes[o.id] = isConflict(p.rel) ? 'Correcta: comparten tiempo.' : p.rel === 'ADJACENT' ? 'Trampa: se tocan en un extremo (ADJACENT) pero no se solapan.' : 'Incorrecta: están separados (NO OVERLAP).';
+      notes[o.id] = isConflict(p.rel) ? L('Correct: they share time.', 'Correcta: comparten tiempo.') : p.rel === 'ADJACENT' ? L('Trap: they touch at an end point (ADJACENT) but do not overlap.', 'Trampa: se tocan en un extremo (ADJACENT) pero no se solapan.') : L('Wrong: they are separate (NO OVERLAP).', 'Incorrecta: están separados (NO OVERLAP).');
     }
     const blocks = sorted.map((i) => ({ start: i.start, end: i.end, label: i.label, cls: bad.some((p) => p.a === i || p.b === i) ? 'conflict' : i.kind === 'maintenance' ? 'maint' : 'task' }));
     const rows = sorted.map((i, k) => ({ label: `#${k + 1}`, blocks: [blocks[k]] }));
@@ -307,7 +318,7 @@
         kind: 'conflict',
         question: conflictQuestion(machine),
         data: {
-          intro: `Schedule of ${machine} (working day ${hm(dayStart)}–${hm(dayEnd)}).`,
+          intro: L(`Schedule of ${machine} (working day ${hm(dayStart)}–${hm(dayEnd)}).`, `Planificación de ${machine} (jornada ${hm(dayStart)}–${hm(dayEnd)}).`),
           machine, dayStart, dayEnd,
           rules: shuffledItems.map((it) => itemText(it, machine)),
         },
@@ -353,8 +364,8 @@
   /* maxConcurrent                                                          */
   /* ===================================================================== */
 
-  const taskText = (t) => `${t.machine} runs "${t.label}" from ${span(t.start, t.end)}.`;
-  const concQuestion = () => 'What is the maximum number of tasks running at the same time? (A task that ends exactly when another starts does not overlap it.)';
+  const taskText = (t) => L(`${t.machine} runs "${t.label}" from ${span(t.start, t.end)}.`, `${t.machine}: ejecuta «${t.label}» de ${span(t.start, t.end)}.`);
+  const concQuestion = () => L('What is the maximum number of tasks running at the same time? (A task that ends exactly when another starts does not overlap it.)', '¿Cuál es el máximo de tareas que se ejecutan a la vez? (Una tarea que termina justo cuando empieza otra no se solapa con ella.)');
 
   /** wrong-but-tempting count: touching end points treated as overlap */
   function inclusiveDepth(list) {
@@ -385,14 +396,15 @@
     const segs = peakSets(tasks);
     const events = tasks.flatMap((t) => [{ t: t.start, d: '+', n: t.label }, { t: t.end, d: '−', n: t.label }]).sort((x, y) => x.t - y.t || (x.d === '−' ? -1 : 1));
     const steps = [
-      X.step('Barrido temporal', 'Se ordenan los instantes de inicio (+) y fin (−); en un mismo instante el fin se procesa antes que el inicio (tocarse no es solaparse).', events.map((e) => `${hm(e.t)} ${e.d} ${e.n}`)),
-      X.step('Máximo', `El máximo simultáneo es ${depth}: ${segs[0].running.map((t) => `«${t.label}»`).join(', ')} durante ${I.fmtRange(segs[0])}.`),
-      X.step('Conclusión', `Respuesta: ${depth}.${incl !== depth ? ` (Si se contasen como solapadas las tareas que solo se tocan, saldría ${incl}: es la trampa.)` : ''}`),
+      X.step(L('Time sweep', 'Barrido temporal'), L('Start (+) and end (−) instants are sorted; at the same instant the end is processed before the start (touching is not overlapping).', 'Se ordenan los instantes de inicio (+) y fin (−); en un mismo instante el fin se procesa antes que el inicio (tocarse no es solaparse).'), events.map((e) => `${hm(e.t)} ${e.d} ${e.n}`)),
+      X.step(L('Maximum', 'Máximo'), L(`The maximum at the same time is ${depth}: ${segs[0].running.map((t) => `«${t.label}»`).join(', ')} during ${I.fmtRange(segs[0])}.`, `El máximo simultáneo es ${depth}: ${segs[0].running.map((t) => `«${t.label}»`).join(', ')} durante ${I.fmtRange(segs[0])}.`)),
+      X.step(L('Conclusion', 'Conclusión'), L(`Answer: ${depth}.${incl !== depth ? ` (Counting tasks that merely touch as overlapping would give ${incl}: that is the trap.)` : ''}`, `Respuesta: ${depth}.${incl !== depth ? ` (Si se contasen como solapadas las tareas que solo se tocan, saldría ${incl}: es la trampa.)` : ''}`)),
     ];
     const notes = {};
     for (const o of ex.options) {
       const v = o.payload.count;
-      notes[o.id] = v === depth ? 'Correcta.' : v === incl ? 'Trampa: cuenta como simultáneas tareas que solo se tocan en un extremo.' : v > depth ? `Ningún instante tiene ${v} tareas en marcha.` : `Hay un instante con más tareas: ${segs[0].running.length} durante ${I.fmtRange(segs[0])}.`;
+      notes[o.id] = v === depth ? L('Correct.', 'Correcta.') : v === incl ? L('Trap: it counts as simultaneous tasks that only touch at an end point.', 'Trampa: cuenta como simultáneas tareas que solo se tocan en un extremo.')
+        : v > depth ? L(`No instant has ${v} tasks running.`, `Ningún instante tiene ${v} tareas en marcha.`) : L(`There is an instant with more tasks: ${segs[0].running.length} during ${I.fmtRange(segs[0])}.`, `Hay un instante con más tareas: ${segs[0].running.length} durante ${I.fmtRange(segs[0])}.`);
     }
     const rows = tasks.slice().sort((a, b) => a.start - b.start).map((t) => ({ label: t.machine, blocks: [{ start: t.start, end: t.end, label: t.label, cls: segs.some((s) => s.running.includes(t)) ? 'conflict' : 'task' }] }));
     return { steps, visual: { type: 'timeline', dayStart: ex.data.dayStart, dayEnd: ex.data.dayEnd, rows }, optionNotes: notes };
@@ -431,7 +443,7 @@
       const ex = {
         kind: 'maxConcurrent',
         question: concQuestion(),
-        data: { intro: `Tasks scheduled on different machines (working day ${hm(dayStart)}–${hm(dayEnd)}).`, dayStart, dayEnd, rules: rules.map(taskText) },
+        data: { intro: L(`Tasks scheduled on different machines (working day ${hm(dayStart)}–${hm(dayEnd)}).`, `Tareas programadas en distintas máquinas (jornada ${hm(dayStart)}–${hm(dayEnd)}).`), dayStart, dayEnd, rules: rules.map(taskText) },
         constraints: rules,
         options,
         correctAnswer: options[all.indexOf(depth)].id,

@@ -16,14 +16,34 @@
       stats: () => RT.ui.stats.render(app),
     };
 
+    /** Language switch in the header + <html lang> + document title. */
+    function drawChrome() {
+      const t = RT.i18n.t;
+      document.documentElement.lang = RT.i18n.lang;
+      document.title = t('app.title');
+      const nm = document.getElementById('app-name');
+      if (nm) nm.textContent = t('app.title');
+      const box = document.getElementById('lang-switch');
+      if (!box) return;
+      RT.ui.clear(box).append(
+        RT.ui.h('span', { class: 'sr-only', id: 'lang-label' }, t('lang.label')),
+        ...RT.i18n.LANGS.map((l) => RT.ui.h('button', {
+          type: 'button', class: 'lang-btn' + (RT.i18n.lang === l ? ' is-on' : ''), lang: l, 'aria-pressed': RT.i18n.lang === l ? 'true' : 'false',
+          'aria-label': t('lang.name.' + l), title: t('lang.name.' + l), onclick: () => app.updateSettings({ lang: l }),
+        }, l.toUpperCase())));
+      const skip = document.querySelector('.skip');
+      if (skip) skip.textContent = t('app.skip');
+    }
+
     function draw(focusHeading) {
+      drawChrome();
       let node;
       try {
         node = SCREENS[app.state.screen]();
       } catch (e) {
         console.error(e);
-        node = RT.ui.h('section', { class: 'screen' }, RT.ui.h('p', { class: 'alert', role: 'alert' }, app.PRODUCTION_ERROR),
-          RT.ui.h('button', { type: 'button', class: 'btn', onclick: () => app.goDashboard() }, 'Volver al panel'));
+        node = RT.ui.h('section', { class: 'screen' }, RT.ui.h('p', { class: 'alert', role: 'alert' }, RT.i18n.t('err.generic')),
+          RT.ui.h('button', { type: 'button', class: 'btn', onclick: () => app.goDashboard() }, RT.i18n.t('ex.back')));
       }
       RT.ui.clear(root).appendChild(node);
       if (focusHeading) {
@@ -61,8 +81,9 @@
       }
     });
 
-    // Reproduce an exercise: ?module=positional&level=2&seed=abc123   (+ &debug=1)
+    // Reproduce an exercise: ?module=positional&level=2&seed=abc123   (+ &debug=1, &lang=es)
     const q = new URLSearchParams(location.search);
+    if (RT.i18n.isLang(q.get('lang'))) app.updateSettings({ lang: q.get('lang') });
     if (q.get('debug') === '1') app.updateSettings({ debug: true });
     if (q.get('module') && q.get('seed') && RT.modules[q.get('module')]) {
       const lvl = Number(q.get('level')) || 1;

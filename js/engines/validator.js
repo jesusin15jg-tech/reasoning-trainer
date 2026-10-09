@@ -11,7 +11,7 @@
 (function () {
   const RT = (globalThis.RT = globalThis.RT || {});
 
-  const REQUIRED = ['id', 'module', 'difficulty', 'question', 'data', 'constraints', 'correctAnswer', 'explanation', 'createdAt', 'timeLimit'];
+  const REQUIRED = ['id', 'module', 'lang', 'difficulty', 'question', 'data', 'constraints', 'correctAnswer', 'explanation', 'createdAt', 'timeLimit'];
 
   function sameAnswer(a, b) {
     if (Array.isArray(a) || Array.isArray(b)) {
@@ -24,6 +24,10 @@
   }
 
   function validateExercise(ex) {
+    return RT.i18n.withLang(ex && ex.lang, () => validateInLang(ex));
+  }
+
+  function validateInLang(ex) {
     const errors = [];
     const out = { ok: false, errors, solutionCount: null, solverAnswer: null, optionValidity: null };
     try {

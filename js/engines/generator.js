@@ -33,6 +33,11 @@
 
   /** Deterministic generation from a seed. Returns { exercise, attempts, rejected } or throws. */
   function generateFromSeed(moduleId, difficulty, seed, opts = {}) {
+    const lang = RT.i18n.isLang(opts.lang) ? opts.lang : RT.i18n.lang;
+    return RT.i18n.withLang(lang, () => generateInLang(moduleId, difficulty, seed, opts, lang));
+  }
+
+  function generateInLang(moduleId, difficulty, seed, opts, lang) {
     const mod = RT.modules[moduleId];
     if (!mod) throw new Error('Unknown module: ' + moduleId);
     const rejected = [];
@@ -48,6 +53,7 @@
       }
       if (!ex) continue; // silently rejected candidate
       ex.module = moduleId;
+      ex.lang = lang;
       ex.difficulty = difficulty;
       ex.seed = String(seed);
       ex.id = `${moduleId}-L${difficulty}-${seed}`;
@@ -71,8 +77,9 @@
   }
 
   /** Validated, pre-built static exercise used only if live generation keeps failing. */
-  function fallbackExercise(moduleId, difficulty, rng) {
-    const pool = ((RT.fallbacks || {})[moduleId] || {})[difficulty] || [];
+  function fallbackExercise(moduleId, difficulty, rng, lang) {
+    lang = RT.i18n.isLang(lang) ? lang : RT.i18n.lang;
+    const pool = ((((RT.fallbacks || {})[lang] || {})[moduleId]) || {})[difficulty] || [];
     const candidates = rng ? rng.shuffle(pool) : pool;
     for (const raw of candidates) {
       const ex = JSON.parse(JSON.stringify(raw));
@@ -91,20 +98,20 @@
     const { module: moduleId, difficulty } = req;
     const recent = req.recentSignatures || [];
     // An explicit seed means "reproduce exactly this exercise" => no repetition filter.
-    if (req.seed) return generateFromSeed(moduleId, difficulty, req.seed);
+    if (req.seed) return generateFromSeed(moduleId, difficulty, req.seed, { lang: req.lang });
 
     let lastError = null;
     for (let i = 0; i < MAX_SEED_RETRIES; i++) {
       const seed = RT.newSeed();
       try {
-        const res = generateFromSeed(moduleId, difficulty, seed);
+        const res = generateFromSeed(moduleId, difficulty, seed, { lang: req.lang });
         if (recent.includes(res.exercise.meta.signature)) continue; // never repeat immediately
         return res;
       } catch (e) {
         lastError = e;
       }
     }
-    const fb = fallbackExercise(moduleId, difficulty, new RT.RNG(RT.newSeed()));
+    const fb = fallbackExercise(moduleId, difficulty, new RT.RNG(RT.newSeed()), req.lang);
     if (fb) return { exercise: fb, attempts: MAX_ATTEMPTS, rejected: (lastError && lastError.rejected) || [], usedFallback: true };
     throw lastError || new Error('Unable to generate exercise');
   }

@@ -53,6 +53,15 @@
       requiredAnyOf: { 1: [], 2: ['ordinal', 'range'], 3: ['conditional'] },
       maxAnswerSize: { 1: 12, 2: 9, 3: 7 },
     },
+    inductive: {
+      figures: { 1: ['diamond', 'quad8'], 2: ['quad8', 'frame3'], 3: ['frame3', 'quad8'] },
+      kinds: { 1: ['next'], 2: ['next', 'missing'], 3: ['next', 'missing', 'paint'] },
+      visibleNext: { 1: 4, 2: 5, 3: 5 }, // figures shown before the "?" in next/paint exercises
+      totalMissing: { 2: 6, 3: 7 }, // figures in a "missing" sequence (one of them is hidden)
+      options: { 1: 4, 2: 5, 3: 5 },
+      // difficulty = complexity of the SIMPLEST rule that explains the visible figures (see sequences.js tiers)
+      minTier: { 1: 1, 2: 2, 3: 3 },
+    },
     english: {
       itemLevels: { 1: [1], 2: [1, 2], 3: [2, 3] },
       preferLevel: { 1: [1], 2: [2], 3: [3] },

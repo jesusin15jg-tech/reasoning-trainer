@@ -3,12 +3,14 @@
   --bg: #f6f7fb; --surface: #ffffff; --ink: #14213d; --muted: #4a5568; --line: #cfd6e4;
   --brand: #1d4ed8; --brand-ink: #ffffff; --ok: #0f7a3d; --ok-bg: #e3f6ea; --bad: #b42318; --bad-bg: #fde8e6;
   --warn: #8a5300; --focus: #f59e0b; --radius: 12px;
+  --fig-empty: #ffffff; --fig-ink: #14213d; --fig-g-bg: #d9f5e3; --fig-g-line: #0f7a3d; --fig-b-bg: #dbe8ff; --fig-b-dot: #1d4ed8;
   --c-task: #3b6fd6; --c-other: #8a94a8; --c-maint: #c2410c; --c-crew: #7c3aed; --c-free: #15803d; --c-short: #a16207; --c-answer: #0e7490;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0e1424; --surface: #172036; --ink: #eef2fb; --muted: #b4bfd6; --line: #34415f;
     --brand: #6ea0ff; --brand-ink: #0a1020; --ok: #5fe08f; --ok-bg: #12301f; --bad: #ff8f85; --bad-bg: #3a1714; --warn: #f5c451;
+    --fig-empty: #1d2a47; --fig-ink: #dbe4f7; --fig-g-bg: #12301f; --fig-g-line: #5fe08f; --fig-b-bg: #14274d; --fig-b-dot: #8ab4ff;
     --c-task: #5b8def; --c-other: #7b86a0; --c-maint: #f08a52; --c-crew: #a78bfa; --c-free: #4ade80; --c-short: #facc15; --c-answer: #22d3ee;
   }
 }
@@ -163,3 +165,39 @@ mark { background: var(--ok-bg); color: var(--ok); font-weight: 700; padding: 0 
   .cal-cell { min-height: 46px; } .cal-cell small { font-size: .58rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* language switch */
+.lang-switch { margin-left: auto; display: inline-flex; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; }
+.lang-btn { font: inherit; font-weight: 700; padding: .3rem .8rem; min-height: 40px; border: 0; background: var(--surface); color: var(--ink); cursor: pointer; }
+.lang-btn + .lang-btn { border-left: 2px solid var(--line); }
+.lang-btn.is-on { background: var(--brand); color: var(--brand-ink); }
+.lang-btn:focus-visible { outline-offset: -3px; }
+
+/* figures (inductive module) */
+.fig { display: block; max-width: 100%; height: auto; }
+.fig-cell { stroke: var(--fig-ink); stroke-width: 1.4; stroke-linejoin: round; }
+.fig-op { cursor: pointer; }
+.fig-g:focus { outline: none; }
+.fig-g:focus-visible polygon, .fig-g:hover polygon { stroke: var(--focus); stroke-width: 3.4; }
+.pat-g-bg { fill: var(--fig-g-bg); } .pat-g-line { stroke: var(--fig-g-line); }
+.pat-b-bg { fill: var(--fig-b-bg); } .pat-b-dot { fill: var(--fig-b-dot); }
+.fig-swatch { vertical-align: middle; }
+.fig-legend { margin: .5rem 0 0; }
+.sequence { margin: 1rem 0; }
+.seq { list-style: none; display: flex; flex-wrap: wrap; gap: .6rem; padding: 0; margin: 0; align-items: flex-end; }
+.seq-item { display: flex; flex-direction: column; align-items: center; gap: .15rem; padding: .35rem; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.seq-n { font-size: .78rem; font-weight: 700; color: var(--muted); }
+.seq-hole { width: 96px; height: 96px; display: grid; place-items: center; font-size: 2.4rem; font-weight: 800; color: var(--brand); border: 3px dashed var(--brand); border-radius: 10px; }
+.seq-answer { border: 3px solid var(--ok); background: var(--ok-bg); }
+.answers-figs { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }
+.answer-fig { flex-direction: column; align-items: center; gap: .3rem; text-align: center; }
+.answer-fig .answer-letter { order: -1; }
+.brushes { border: 0; padding: 0; margin: .5rem 0; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.brushes legend { font-weight: 700; margin-right: .6rem; float: left; padding: 0; }
+.brush { display: inline-flex; gap: .4rem; align-items: center; border: 2px solid var(--line); border-radius: 10px; padding: .35rem .7rem; cursor: pointer; }
+.brush.is-on { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, var(--surface)); }
+.brush:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.paint-board { display: flex; justify-content: center; padding: .5rem; }
+.rv-fig, .res-fig { display: inline-flex; align-items: center; gap: .5rem; }
+.rv-body { flex: 1; min-width: 0; }
+@media (max-width: 560px) { .seq-hole { width: 76px; height: 76px; } .seq .fig { width: 76px; height: 76px; } }

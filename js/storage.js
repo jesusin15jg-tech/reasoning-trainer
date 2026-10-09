@@ -7,7 +7,7 @@
   const KEY = 'reasoning-trainer.v1';
   const memory = {};
 
-  const DEFAULT_SETTINGS = { module: 'positional', difficulty: 1, mode: 'training', trialLimit: 75, debug: false };
+  const DEFAULT_SETTINGS = { module: 'positional', difficulty: 1, mode: 'training', trialLimit: 75, debug: false, lang: 'en' };
 
   function backend() {
     try {
@@ -41,11 +41,12 @@
     if (!isObject(raw)) return d;
     if (isObject(raw.settings)) {
       const s = raw.settings;
-      if (['positional', 'scheduling', 'calendar', 'english'].includes(s.module)) d.settings.module = s.module;
+      if (['positional', 'scheduling', 'calendar', 'inductive', 'english'].includes(s.module)) d.settings.module = s.module;
       if ([1, 2, 3].includes(s.difficulty)) d.settings.difficulty = s.difficulty;
       if (['training', 'trial'].includes(s.mode)) d.settings.mode = s.mode;
       if ([60, 75, 90].includes(s.trialLimit)) d.settings.trialLimit = s.trialLimit;
       if (typeof s.debug === 'boolean') d.settings.debug = s.debug;
+      if (['en', 'es'].includes(s.lang)) d.settings.lang = s.lang;
     }
     if (isObject(raw.stats)) d.stats = RT.statistics.sanitizeStats(raw.stats);
     if (Array.isArray(raw.questionHistory)) d.questionHistory = raw.questionHistory.filter(isObject).slice(-200);
